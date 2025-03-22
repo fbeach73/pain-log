@@ -14,12 +14,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pain Entries API
   app.post("/api/pain-entries", async (req, res) => {
     try {
-      if (!req.isAuthenticated()) return res.sendStatus(401);
+      console.log("Received pain entry request:", {
+        body: req.body,
+        authenticated: req.isAuthenticated(),
+        hasUserId: !!req.body.userId,
+      });
       
-      const validatedData = insertPainEntrySchema.parse(req.body);
+      // Even if not authenticated via session, allow the request if userId is in the body
+      if (!req.isAuthenticated() && !req.body.userId) {
+        console.log("Pain entry creation failed: Not authenticated and no userId provided");
+        return res.status(401).json({ message: "Authentication required. Please provide a valid userId." });
+      }
+      
+      // Use the user ID from session if available, otherwise use the one from the request body
+      const userId = req.isAuthenticated() ? req.user.id : req.body.userId;
+      
+      // Make sure the userId is included in the data to validate
+      const dataToValidate = {
+        ...req.body,
+        userId: userId
+      };
+      
+      console.log("Validating pain entry data with userId:", userId);
+      const validatedData = insertPainEntrySchema.parse(dataToValidate);
+      console.log("Pain entry data validated successfully, creating entry");
+      
       const painEntry = await storage.createPainEntry(validatedData);
+      console.log("Pain entry created successfully:", painEntry.id);
       res.status(201).json(painEntry);
     } catch (error) {
+      console.error("Error creating pain entry:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.message });
       }

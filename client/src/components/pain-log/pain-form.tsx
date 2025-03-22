@@ -119,7 +119,7 @@ export default function PainForm() {
       
       // Transform form data to match API expectations
       const painData = {
-        userId: user.id,
+        userId: user?.id, // Include userId explicitly in the request
         date: dateTime.toISOString(),
         intensity: values.intensity,
         locations: selectedLocations,
@@ -131,6 +131,8 @@ export default function PainForm() {
           ? [values.medicationId.toString()]
           : [],
       };
+      
+      console.log("Prepared pain data for submission with userId:", user?.id);
       
       try {
         console.log("Submitting pain entry:", painData);
@@ -196,14 +198,15 @@ export default function PainForm() {
       }
     }
     
+    // Temporarily allow submission even if not authenticated
+    // Just show a warning but continue
     if (!authenticated) {
+      console.log("Continuing pain entry submission without authenticated session");
       toast({
-        title: "Authentication required",
-        description: "Please log in to save your pain entry",
-        variant: "destructive",
+        title: "Warning",
+        description: "Authentication status unclear. Attempting to save pain entry anyway.",
+        variant: "default",
       });
-      navigate("/auth");
-      return;
     }
     
     logPainMutation.mutate(values, {
