@@ -32,18 +32,22 @@ export function setupAuth(app: Express) {
   // Set a secure secret or use environment variable
   const sessionSecret = process.env.SESSION_SECRET || "paintrack-session-secret";
   
+  // Determine if we're in production or development
+  const isProd = process.env.NODE_ENV === 'production';
+  console.log(`Setting up auth in ${isProd ? 'production' : 'development'} mode`);
+
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: true, // Changed to true to ensure sessions are saved
-    saveUninitialized: false,
+    resave: true, // Always save session regardless of modifications
+    saveUninitialized: false, // Don't save uninitialized sessions
     store: storage.sessionStore,
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
-      secure: false, // Set to false during development
-      sameSite: "lax",
+      secure: isProd, // Only use secure cookies in production
+      sameSite: isProd ? "none" : "lax", // Needed for cross-site in production
       httpOnly: true,
       path: '/'
     }
@@ -84,53 +88,96 @@ export function setupAuth(app: Express) {
   // Authentication routes
   app.post("/api/register", async (req, res, next) => {
     try {
+      console.log("Registration attempt for username:", req.body.username);
+      
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
+        console.log("Registration failed: Username already exists:", req.body.username);
         return res.status(400).json({ message: "Username already exists" });
       }
 
+      console.log("Creating new user...");
       const user = await storage.createUser({
         ...req.body,
         password: await hashPassword(req.body.password),
       });
+      console.log("User created successfully:", user.username);
 
       // Simple login without session regeneration which was causing issues
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Session login error during registration:", err);
+          return next(err);
+        }
+        
+        console.log("User logged in to session after registration, saving session...");
         
         // Save session explicitly
         req.session.save((err) => {
-          if (err) return next(err);
+          if (err) {
+            console.error("Session save error during registration:", err);
+            return next(err);
+          }
+          
+          // Debug session data
+          console.log("Session saved successfully after registration:", {
+            id: req.sessionID,
+            cookie: req.session.cookie,
+          });
           
           // Don't send password to client
           const { password, ...userWithoutPassword } = user;
-          console.log("User registered and logged in:", user.username, "- Session ID:", req.sessionID);
+          console.log("Registration and login successful for:", user.username, "- Session ID:", req.sessionID);
           res.status(201).json(userWithoutPassword);
         });
       });
     } catch (error) {
+      console.error("Registration error:", error);
       next(error);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
+    console.log("Login attempt for username:", req.body.username);
+    
     passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
+      
       if (!user) {
+        console.log("Login failed: Invalid credentials for", req.body.username);
         return res.status(401).json({ message: "Invalid username or password" });
       }
       
+      console.log("Credentials valid for user:", user.username);
+      
       // Simple login without session regeneration which was causing issues
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Session login error:", err);
+          return next(err);
+        }
+        
+        console.log("User logged in to session, saving session...");
         
         // Save session explicitly
         req.session.save((err) => {
-          if (err) return next(err);
+          if (err) {
+            console.error("Session save error:", err);
+            return next(err);
+          }
+          
+          // Debug session data
+          console.log("Session saved successfully:", {
+            id: req.sessionID,
+            cookie: req.session.cookie,
+          });
           
           // Don't send password to client
           const { password, ...userWithoutPassword } = user;
-          console.log("User logged in:", user.username, "- Session ID:", req.sessionID);
+          console.log("Login successful for:", user.username, "- Session ID:", req.sessionID);
           res.status(200).json(userWithoutPassword);
         });
       });
@@ -145,6 +192,15 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
+    // Debug session information
+    console.log("GET /api/user - Request received:", {
+      isAuthenticated: req.isAuthenticated(),
+      hasUserObject: !!req.user,
+      sessionID: req.sessionID,
+      sessionCookie: req.session?.cookie,
+      user: req.user ? `${(req.user as any).username} (ID: ${(req.user as any).id})` : "not available"
+    });
+
     // Check for authenticated session
     if (!req.isAuthenticated() || !req.user) {
       console.log("GET /api/user - User not authenticated, returning 401");
@@ -155,7 +211,9 @@ export function setupAuth(app: Express) {
     console.log("GET /api/user - Authenticated session:", {
       id: req.sessionID,
       userId: (req.user as SelectUser).id,
-      username: (req.user as SelectUser).username
+      username: (req.user as SelectUser).username,
+      cookieMaxAge: req.session.cookie.maxAge,
+      cookieExpires: req.session.cookie.expires
     });
     
     // Don't send password to client
