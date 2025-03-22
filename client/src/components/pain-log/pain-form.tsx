@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,17 +49,26 @@ type PainFormValues = z.infer<typeof painFormSchema>;
 
 export default function PainForm() {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  const { user, refetchUser } = useAuth();
   const { toast } = useToast();
   
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedCharacteristics, setSelectedCharacteristics] = useState<string[]>([]);
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
   
-  const { data: medications } = useQuery<Medication[]>({
+  const { data: medications, refetch: refetchMedications } = useQuery<Medication[]>({
     queryKey: ["/api/medications"],
     enabled: !!user,
+    staleTime: 0, // Always refetch to ensure we have the latest data
   });
+  
+  // Ensure we have the latest user data and medications
+  useEffect(() => {
+    if (user) {
+      refetchUser?.();
+      refetchMedications();
+    }
+  }, [user, refetchUser, refetchMedications]);
 
   const form = useForm<PainFormValues>({
     resolver: zodResolver(painFormSchema),
