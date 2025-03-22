@@ -30,13 +30,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.isAuthenticated() ? req.user.id : req.body.userId;
       
       // Make sure the userId is included in the data to validate
+      // Fix the date type issue by parsing string date into a real Date object
       const dataToValidate = {
         ...req.body,
-        userId: userId
+        userId: userId,
+        date: req.body.date ? new Date(req.body.date) : new Date() // Convert string to Date object
       };
       
-      console.log("Validating pain entry data with userId:", userId);
-      const validatedData = insertPainEntrySchema.parse(dataToValidate);
+      console.log("Validating pain entry data with userId:", userId, "and date:", dataToValidate.date);
+      
+      // Custom validation schema that accepts ISO strings for dates
+      const customSchema = insertPainEntrySchema.extend({
+        date: z.string().transform(val => new Date(val)),
+      });
+      
+      const validatedData = customSchema.parse(dataToValidate);
       console.log("Pain entry data validated successfully, creating entry");
       
       const painEntry = await storage.createPainEntry(validatedData);
