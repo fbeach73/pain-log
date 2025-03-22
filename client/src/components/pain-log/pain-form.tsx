@@ -79,26 +79,36 @@ export default function PainForm() {
 
   const logPainMutation = useMutation({
     mutationFn: async (values: PainFormValues) => {
+      // Ensure user is available
+      if (!user) {
+        throw new Error("You must be logged in to save a pain entry");
+      }
+      
       // Combine date and time into a Date object
       const dateTime = new Date(`${values.date}T${values.time}`);
       
       // Transform form data to match API expectations
       const painData = {
-        userId: user!.id,
+        userId: user.id,
         date: dateTime.toISOString(),
         intensity: values.intensity,
         locations: selectedLocations,
         characteristics: selectedCharacteristics,
         triggers: selectedTriggers,
-        notes: values.notes,
+        notes: values.notes || "",  // Ensure not null
         medicationTaken: values.hasMedication,
         medications: values.hasMedication && values.medicationId 
           ? [values.medicationId.toString()]
           : [],
       };
       
-      const res = await apiRequest("POST", "/api/pain-entries", painData);
-      return await res.json();
+      try {
+        const res = await apiRequest("POST", "/api/pain-entries", painData);
+        return await res.json();
+      } catch (error) {
+        console.error("Error saving pain entry:", error);
+        throw new Error("Failed to save pain entry. Please ensure you're logged in.");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries"] });
@@ -379,7 +389,11 @@ export default function PainForm() {
                         placeholder="Describe your pain experience in more detail..."
                         className="resize-none"
                         rows={3}
-                        {...field}
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage />

@@ -129,6 +129,17 @@ export class MemStorage implements IStorage {
     const id = this.currentUserId++;
     const user: User = { ...insertUser, id, profileCreated: false, medicalHistory: [], painBackground: "" };
     this.users.set(id, user);
+    
+    // Create default medication for new user
+    const defaultMedication = {
+      userId: id,
+      name: "Ibuprofen",
+      dosage: "400mg",
+      frequency: "As needed",
+      timeOfDay: ["Morning", "Evening"],
+    };
+    await this.createMedication(defaultMedication);
+    
     return user;
   }
 
