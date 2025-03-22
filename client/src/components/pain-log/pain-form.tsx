@@ -90,7 +90,28 @@ export default function PainForm() {
     mutationFn: async (values: PainFormValues) => {
       // Ensure user is available
       if (!user) {
-        throw new Error("You must be logged in to save a pain entry");
+        // Try to refetch user data first
+        try {
+          console.log("User data not found, attempting to refetch");
+          if (refetchUser) {
+            const result = await refetchUser();
+            if (!result.data) {
+              console.log("Refetch failed to get user data");
+              throw new Error("Session expired. Please log in again.");
+            }
+          } else {
+            throw new Error("Authentication error. Please log in again.");
+          }
+        } catch (error) {
+          console.error("Error refetching user:", error);
+          throw new Error("Your session may have expired. Please log in again.");
+        }
+      }
+      
+      // Double check we have user data before proceeding
+      if (!user || !user.id) {
+        console.error("No user ID available after refetch attempt");
+        throw new Error("Authentication error. Please refresh and try again.");
       }
       
       // Combine date and time into a Date object
@@ -112,10 +133,17 @@ export default function PainForm() {
       };
       
       try {
+        console.log("Submitting pain entry:", painData);
         const res = await apiRequest("POST", "/api/pain-entries", painData);
-        return await res.json();
+        const data = await res.json();
+        console.log("Pain entry saved successfully:", data);
+        return data;
       } catch (error) {
         console.error("Error saving pain entry:", error);
+        // Verify authentication status after error
+        if (refetchUser) {
+          refetchUser().catch(e => console.error("Failed to verify auth status:", e));
+        }
         throw new Error("Failed to save pain entry. Please ensure you're logged in.");
       }
     },
@@ -124,6 +152,12 @@ export default function PainForm() {
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/trend"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/triggers"] });
+      
+      // Also refetch user data to ensure we still have a valid session
+      if (refetchUser) {
+        refetchUser().catch(e => console.error("Failed to refetch user after success:", e));
+      }
+      
       toast({
         title: "Pain entry logged",
         description: "Your pain information has been saved successfully.",
@@ -139,7 +173,7 @@ export default function PainForm() {
     },
   });
 
-  const onSubmit = (values: PainFormValues) => {
+  const onSubmit = async (values: PainFormValues) => {
     if (selectedLocations.length === 0) {
       toast({
         title: "Missing information",
@@ -149,7 +183,20 @@ export default function PainForm() {
       return;
     }
     
-    if (!user) {
+    // First verify user is still authenticated
+    let authenticated = !!user;
+    
+    if (!authenticated && refetchUser) {
+      try {
+        console.log("No user data, attempting to refetch before submission");
+        const result = await refetchUser();
+        authenticated = !!result.data;
+      } catch (error) {
+        console.error("Failed to refetch user data:", error);
+      }
+    }
+    
+    if (!authenticated) {
       toast({
         title: "Authentication required",
         description: "Please log in to save your pain entry",
@@ -165,6 +212,12 @@ export default function PainForm() {
           title: "Success",
           description: "Your pain entry has been saved",
         });
+        
+        // Refresh user data to ensure we maintain session
+        if (refetchUser) {
+          refetchUser().catch(e => console.error("Failed to refetch user after submission:", e));
+        }
+        
         navigate("/");
       },
       onError: (error) => {
@@ -173,6 +226,11 @@ export default function PainForm() {
           description: error.message || "Please try again",
           variant: "destructive",
         });
+        
+        // If there's an error, check if we're still authenticated
+        if (refetchUser) {
+          refetchUser().catch(e => console.error("Failed to verify auth after error:", e));
+        }
       }
     });
   };
