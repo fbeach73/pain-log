@@ -93,33 +93,18 @@ export function setupAuth(app: Express) {
         password: await hashPassword(req.body.password),
       });
 
-      // Login with specific session settings to improve persistence
-      req.login(user, { session: true }, (err) => {
+      // Simple login without session regeneration which was causing issues
+      req.login(user, (err) => {
         if (err) return next(err);
         
-        // Regenerate the session to avoid session fixation attacks
-        const oldSession = req.session;
-        req.session.regenerate((err) => {
+        // Save session explicitly
+        req.session.save((err) => {
           if (err) return next(err);
           
-          // Merge any existing session data
-          if (oldSession) {
-            Object.assign(req.session, oldSession);
-          }
-          
-          // Set a flag to indicate session is authenticated
-          req.session.isAuthenticated = true;
-          req.session.loginTime = new Date().toISOString();
-          
-          // Save the session explicitly
-          req.session.save((err) => {
-            if (err) return next(err);
-            
-            // Don't send password to client
-            const { password, ...userWithoutPassword } = user;
-            console.log("User registered and logged in:", user.username, "- Session ID:", req.sessionID);
-            res.status(201).json(userWithoutPassword);
-          });
+          // Don't send password to client
+          const { password, ...userWithoutPassword } = user;
+          console.log("User registered and logged in:", user.username, "- Session ID:", req.sessionID);
+          res.status(201).json(userWithoutPassword);
         });
       });
     } catch (error) {
@@ -134,33 +119,18 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
       
-      // Login with specific session settings to improve persistence
-      req.login(user, { session: true }, (err) => {
+      // Simple login without session regeneration which was causing issues
+      req.login(user, (err) => {
         if (err) return next(err);
         
-        // Regenerate the session to avoid session fixation attacks
-        const oldSession = req.session;
-        req.session.regenerate((err) => {
+        // Save session explicitly
+        req.session.save((err) => {
           if (err) return next(err);
           
-          // Merge any existing session data
-          if (oldSession) {
-            Object.assign(req.session, oldSession);
-          }
-          
-          // Set a flag to indicate session is authenticated
-          req.session.isAuthenticated = true;
-          req.session.loginTime = new Date().toISOString();
-          
-          // Save the session explicitly
-          req.session.save((err) => {
-            if (err) return next(err);
-            
-            // Don't send password to client
-            const { password, ...userWithoutPassword } = user;
-            console.log("User logged in:", user.username, "- Session ID:", req.sessionID);
-            res.status(200).json(userWithoutPassword);
-          });
+          // Don't send password to client
+          const { password, ...userWithoutPassword } = user;
+          console.log("User logged in:", user.username, "- Session ID:", req.sessionID);
+          res.status(200).json(userWithoutPassword);
         });
       });
     })(req, res, next);
@@ -175,7 +145,7 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     // Check for authenticated session
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated() || !req.user) {
       console.log("GET /api/user - User not authenticated, returning 401");
       return res.sendStatus(401);
     }
@@ -184,11 +154,7 @@ export function setupAuth(app: Express) {
     console.log("GET /api/user - Authenticated session:", {
       id: req.sessionID,
       userId: (req.user as SelectUser).id,
-      username: (req.user as SelectUser).username,
-      // @ts-ignore
-      isAuthenticatedFlag: req.session.isAuthenticated || false,
-      // @ts-ignore
-      loginTime: req.session.loginTime || 'unknown'
+      username: (req.user as SelectUser).username
     });
     
     // Don't send password to client
