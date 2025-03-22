@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, LogOut, User, X } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -9,16 +9,46 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useMutation } from "@tanstack/react-query";
 
 export default function Header() {
   const [, navigate] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const [hasNotifications] = useState(true);
+  const [hasNotifications, setHasNotifications] = useState(true);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  
+  // Sample notifications - in a real app these would come from the backend
+  const [notifications] = useState([
+    {
+      id: 1,
+      title: "Pain pattern detected",
+      message: "We've noticed increased pain levels after physical activity. Consider gentle stretching before exercise.",
+      date: "Just now",
+      read: false
+    },
+    {
+      id: 2,
+      title: "Medication reminder",
+      message: "Remember to log whether your medications are helping with pain relief.",
+      date: "Yesterday",
+      read: false
+    }
+  ]);
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+  
+  const markAllAsRead = () => {
+    setHasNotifications(false);
+    setIsNotificationOpen(false);
   };
 
   const getNameInitials = (): string => {
@@ -51,12 +81,48 @@ export default function Header() {
         
         <div className="flex items-center">
           <div className="mr-3 relative">
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Bell className="h-5 w-5 text-slate-600" />
-              {hasNotifications && (
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
-              )}
-            </Button>
+            <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Bell className="h-5 w-5 text-slate-600" />
+                  {hasNotifications && (
+                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="flex items-center justify-between bg-slate-50 p-3 border-b">
+                  <h3 className="font-medium">Notifications</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={markAllAsRead}
+                    className="text-xs h-8"
+                  >
+                    Mark all as read
+                  </Button>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    <div>
+                      {notifications.map((notification) => (
+                        <div key={notification.id} className="p-3 border-b hover:bg-slate-50">
+                          <div className="flex justify-between">
+                            <h4 className="font-medium text-sm">{notification.title}</h4>
+                            <span className="text-xs text-slate-500">{notification.date}</span>
+                          </div>
+                          <p className="text-sm text-slate-600 mt-1">{notification.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center">
+                      <p className="text-slate-500">No new notifications</p>
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           
           <DropdownMenu>
