@@ -82,7 +82,7 @@ export interface IStorage {
   getReportsByUserId(userId: number): Promise<Report[]>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: ReturnType<typeof createMemoryStore>;
 }
 
 export class MemStorage implements IStorage {
@@ -92,7 +92,7 @@ export class MemStorage implements IStorage {
   private medicationTaken: Map<string, boolean>;
   private resources: Map<string, Resource>;
   private reports: Map<string, Report>;
-  sessionStore: session.SessionStore;
+  sessionStore: ReturnType<typeof createMemoryStore>;
   currentUserId: number;
   currentPainEntryId: number;
   currentMedicationId: number;
@@ -131,7 +131,19 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, profileCreated: false, medicalHistory: [], painBackground: "" };
+    // Initialize default values to avoid type errors
+    const user: User = {
+      id,
+      username: insertUser.username,
+      password: insertUser.password,
+      firstName: insertUser.firstName || null,
+      lastName: insertUser.lastName || null,
+      email: insertUser.email || null,
+      profileCreated: false,
+      medicalHistory: [],
+      painBackground: null
+    };
+    
     this.users.set(id, user);
     
     // Create default medication for new user
@@ -160,7 +172,18 @@ export class MemStorage implements IStorage {
 
   async createPainEntry(entry: InsertPainEntry): Promise<PainEntry> {
     const id = this.currentPainEntryId++;
-    const painEntry: PainEntry = { ...entry, id };
+    const painEntry: PainEntry = {
+      id,
+      userId: entry.userId,
+      date: entry.date || new Date(),
+      intensity: entry.intensity,
+      locations: entry.locations || [],
+      characteristics: entry.characteristics || null,
+      triggers: entry.triggers || null,
+      notes: entry.notes || null,
+      medicationTaken: entry.medicationTaken || false,
+      medications: entry.medications || null
+    };
     this.painEntries.set(id, painEntry);
     return painEntry;
   }
@@ -290,7 +313,15 @@ export class MemStorage implements IStorage {
 
   async createMedication(medication: InsertMedication): Promise<Medication> {
     const id = this.currentMedicationId++;
-    const newMedication: Medication = { ...medication, id, active: true };
+    const newMedication: Medication = {
+      id,
+      userId: medication.userId,
+      name: medication.name,
+      dosage: medication.dosage || null,
+      frequency: medication.frequency || null,
+      timeOfDay: medication.timeOfDay || null,
+      active: medication.active !== undefined ? medication.active : true
+    };
     this.medications.set(id, newMedication);
     return newMedication;
   }
