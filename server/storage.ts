@@ -141,7 +141,19 @@ export class MemStorage implements IStorage {
       email: insertUser.email || null,
       profileCreated: false,
       medicalHistory: [],
-      painBackground: null
+      painBackground: null,
+      // Initialize the new fields with default values
+      age: null,
+      gender: null,
+      height: null,
+      weight: null,
+      allergies: [],
+      currentMedications: [],
+      chronicConditions: [],
+      activityLevel: null,
+      occupation: null,
+      primaryDoctor: null,
+      preferredResources: []
     };
     
     this.users.set(id, user);

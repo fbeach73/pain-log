@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const profileSchema = z.object({
@@ -273,7 +273,7 @@ export default function ProfilePage() {
                             <FormItem>
                               <FormLabel>Height</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., 5'10&quot; or 178cm" {...field} />
+                                <Input placeholder="e.g., 5'10 or 178cm" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -404,68 +404,213 @@ export default function ProfilePage() {
                 <CardContent>
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                      <div>
-                        <FormLabel className="text-base">Medical Conditions</FormLabel>
-                        <FormDescription>
-                          Select any medical conditions that are relevant to your pain.
-                        </FormDescription>
+                      <div className="space-y-8">
+                        <div>
+                          <FormLabel className="text-base font-semibold">Medical Conditions</FormLabel>
+                          <FormDescription>
+                            Select any medical conditions that are relevant to your pain.
+                          </FormDescription>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                            <FormField
+                              control={form.control}
+                              name="medicalHistory"
+                              render={() => (
+                                <>
+                                  {medicalConditions.map((condition) => (
+                                    <FormItem 
+                                      key={condition}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={form.getValues("medicalHistory")?.includes(condition)}
+                                          onCheckedChange={(checked) => {
+                                            const currentValues = form.getValues("medicalHistory") || [];
+                                            
+                                            if (checked) {
+                                              form.setValue("medicalHistory", [
+                                                ...currentValues,
+                                                condition
+                                              ]);
+                                            } else {
+                                              form.setValue(
+                                                "medicalHistory",
+                                                currentValues.filter((value) => value !== condition)
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="font-normal cursor-pointer">
+                                        {condition}
+                                      </FormLabel>
+                                    </FormItem>
+                                  ))}
+                                </>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <FormLabel className="text-base font-semibold">Chronic Conditions</FormLabel>
+                          <FormDescription>
+                            Select any chronic conditions you have been diagnosed with.
+                          </FormDescription>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                            <FormField
+                              control={form.control}
+                              name="chronicConditions"
+                              render={() => (
+                                <>
+                                  {["Rheumatoid Arthritis", "Fibromyalgia", "Chronic Fatigue Syndrome", 
+                                    "Lupus", "Diabetes", "Hypertension", "Heart Disease", "Asthma"].map((condition) => (
+                                    <FormItem 
+                                      key={condition}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={form.getValues("chronicConditions")?.includes(condition)}
+                                          onCheckedChange={(checked) => {
+                                            const currentValues = form.getValues("chronicConditions") || [];
+                                            
+                                            if (checked) {
+                                              form.setValue("chronicConditions", [
+                                                ...currentValues,
+                                                condition
+                                              ]);
+                                            } else {
+                                              form.setValue(
+                                                "chronicConditions",
+                                                currentValues.filter((value) => value !== condition)
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="font-normal cursor-pointer">
+                                        {condition}
+                                      </FormLabel>
+                                    </FormItem>
+                                  ))}
+                                </>
+                              )}
+                            />
+                          </div>
+                        </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                          <FormField
-                            control={form.control}
-                            name="medicalHistory"
-                            render={() => (
-                              <>
-                                {medicalConditions.map((condition) => (
-                                  <FormItem 
-                                    key={condition}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={form.getValues("medicalHistory")?.includes(condition)}
-                                        onCheckedChange={(checked) => {
-                                          const currentValues = form.getValues("medicalHistory") || [];
-                                          
-                                          if (checked) {
-                                            form.setValue("medicalHistory", [
-                                              ...currentValues,
-                                              condition
-                                            ]);
-                                          } else {
-                                            form.setValue(
-                                              "medicalHistory",
-                                              currentValues.filter((value) => value !== condition)
-                                            );
-                                          }
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="font-normal cursor-pointer">
-                                      {condition}
-                                    </FormLabel>
-                                  </FormItem>
+                        <FormField
+                          control={form.control}
+                          name="allergies"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-base font-semibold">Allergies</FormLabel>
+                              <FormDescription>
+                                List any allergies you have, especially to medications.
+                              </FormDescription>
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {field.value?.map((allergy, index) => (
+                                  <div key={index} className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">
+                                    <span>{allergy}</span>
+                                    <button
+                                      type="button"
+                                      className="text-slate-500 hover:text-slate-700"
+                                      onClick={() => {
+                                        const newValues = [...field.value];
+                                        newValues.splice(index, 1);
+                                        field.onChange(newValues);
+                                      }}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
                                 ))}
+                              </div>
+                              <div className="flex mt-2">
+                                <Input
+                                  placeholder="Add allergy and press Enter"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const value = e.currentTarget.value.trim();
+                                      if (value && !(field.value || []).includes(value)) {
+                                        field.onChange([...(field.value || []), value]);
+                                        e.currentTarget.value = '';
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="currentMedications"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-base font-semibold">Current Medications</FormLabel>
+                              <FormDescription>
+                                List all medications you are currently taking.
+                              </FormDescription>
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {field.value?.map((medication, index) => (
+                                  <div key={index} className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">
+                                    <span>{medication}</span>
+                                    <button
+                                      type="button"
+                                      className="text-slate-500 hover:text-slate-700"
+                                      onClick={() => {
+                                        const newValues = [...field.value];
+                                        newValues.splice(index, 1);
+                                        field.onChange(newValues);
+                                      }}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex mt-2">
+                                <Input
+                                  placeholder="Add medication and press Enter"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const value = e.currentTarget.value.trim();
+                                      if (value && !(field.value || []).includes(value)) {
+                                        field.onChange([...(field.value || []), value]);
+                                        e.currentTarget.value = '';
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      
+                        <div className="flex justify-end mt-6">
+                          <Button type="submit" disabled={updateProfileMutation.isPending}>
+                            {updateProfileMutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="mr-2 h-4 w-4" />
+                                Save Changes
                               </>
                             )}
-                          />
+                          </Button>
                         </div>
-                      </div>
-                      
-                      <div className="flex justify-end">
-                        <Button type="submit" disabled={updateProfileMutation.isPending}>
-                          {updateProfileMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="mr-2 h-4 w-4" />
-                              Save Changes
-                            </>
-                          )}
-                        </Button>
                       </div>
                     </form>
                   </Form>
