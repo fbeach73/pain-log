@@ -105,7 +105,8 @@ export class MemStorage implements IStorage {
     this.resources = new Map();
     this.reports = new Map();
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // 24h
+      checkPeriod: 86400000, // 24h
+      stale: false // Don't check for stale sessions (important for dev)
     });
     this.currentUserId = 1;
     this.currentPainEntryId = 1;
@@ -113,6 +114,9 @@ export class MemStorage implements IStorage {
     
     // Initialize some example resources
     this.initializeResources();
+    
+    // Log to confirm initialization
+    console.log('Storage initialized with in-memory session store');
   }
 
   async getUser(id: number): Promise<User | undefined> {
