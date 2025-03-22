@@ -34,9 +34,11 @@ export function setupAuth(app: Express) {
   
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: false,
+    resave: true, // Changed to true to ensure sessions are saved
     saveUninitialized: false,
     store: storage.sessionStore,
+    name: 'paintrack.sid', // Customized cookie name
+    rolling: true, // Reset expiration on each request
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
       secure: false, // Set to false during development
@@ -91,11 +93,34 @@ export function setupAuth(app: Express) {
         password: await hashPassword(req.body.password),
       });
 
-      req.login(user, (err) => {
+      // Login with specific session settings to improve persistence
+      req.login(user, { session: true }, (err) => {
         if (err) return next(err);
-        // Don't send password to client
-        const { password, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
+        
+        // Regenerate the session to avoid session fixation attacks
+        const oldSession = req.session;
+        req.session.regenerate((err) => {
+          if (err) return next(err);
+          
+          // Merge any existing session data
+          if (oldSession) {
+            Object.assign(req.session, oldSession);
+          }
+          
+          // Set a flag to indicate session is authenticated
+          req.session.isAuthenticated = true;
+          req.session.loginTime = new Date().toISOString();
+          
+          // Save the session explicitly
+          req.session.save((err) => {
+            if (err) return next(err);
+            
+            // Don't send password to client
+            const { password, ...userWithoutPassword } = user;
+            console.log("User registered and logged in:", user.username, "- Session ID:", req.sessionID);
+            res.status(201).json(userWithoutPassword);
+          });
+        });
       });
     } catch (error) {
       next(error);
@@ -108,11 +133,35 @@ export function setupAuth(app: Express) {
       if (!user) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
-      req.login(user, (err) => {
+      
+      // Login with specific session settings to improve persistence
+      req.login(user, { session: true }, (err) => {
         if (err) return next(err);
-        // Don't send password to client
-        const { password, ...userWithoutPassword } = user;
-        res.status(200).json(userWithoutPassword);
+        
+        // Regenerate the session to avoid session fixation attacks
+        const oldSession = req.session;
+        req.session.regenerate((err) => {
+          if (err) return next(err);
+          
+          // Merge any existing session data
+          if (oldSession) {
+            Object.assign(req.session, oldSession);
+          }
+          
+          // Set a flag to indicate session is authenticated
+          req.session.isAuthenticated = true;
+          req.session.loginTime = new Date().toISOString();
+          
+          // Save the session explicitly
+          req.session.save((err) => {
+            if (err) return next(err);
+            
+            // Don't send password to client
+            const { password, ...userWithoutPassword } = user;
+            console.log("User logged in:", user.username, "- Session ID:", req.sessionID);
+            res.status(200).json(userWithoutPassword);
+          });
+        });
       });
     })(req, res, next);
   });
@@ -125,7 +174,23 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    // Check for authenticated session
+    if (!req.isAuthenticated()) {
+      console.log("GET /api/user - User not authenticated, returning 401");
+      return res.sendStatus(401);
+    }
+    
+    // Log session info for debugging
+    console.log("GET /api/user - Authenticated session:", {
+      id: req.sessionID,
+      userId: (req.user as SelectUser).id,
+      username: (req.user as SelectUser).username,
+      // @ts-ignore
+      isAuthenticatedFlag: req.session.isAuthenticated || false,
+      // @ts-ignore
+      loginTime: req.session.loginTime || 'unknown'
+    });
+    
     // Don't send password to client
     const { password, ...userWithoutPassword } = req.user as SelectUser;
     res.json(userWithoutPassword);
