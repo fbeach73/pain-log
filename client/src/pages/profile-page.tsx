@@ -34,6 +34,18 @@ const profileSchema = z.object({
   email: z.string().email("Invalid email address"),
   painBackground: z.string().optional(),
   medicalHistory: z.array(z.string()).optional(),
+  // Additional profile fields
+  age: z.number().min(0).max(120).optional(),
+  gender: z.string().optional(),
+  height: z.string().optional(),
+  weight: z.string().optional(),
+  allergies: z.array(z.string()).optional(),
+  currentMedications: z.array(z.string()).optional(),
+  chronicConditions: z.array(z.string()).optional(),
+  activityLevel: z.string().optional(),
+  occupation: z.string().optional(),
+  primaryDoctor: z.string().optional(),
+  preferredResources: z.array(z.string()).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -68,6 +80,18 @@ export default function ProfilePage() {
       email: profile?.email || user?.email || "",
       painBackground: profile?.painBackground || "",
       medicalHistory: profile?.medicalHistory as string[] || [],
+      // Initialize additional fields
+      age: profile?.age || undefined,
+      gender: profile?.gender || "",
+      height: profile?.height || "",
+      weight: profile?.weight || "",
+      allergies: profile?.allergies as string[] || [],
+      currentMedications: profile?.currentMedications as string[] || [],
+      chronicConditions: profile?.chronicConditions as string[] || [],
+      activityLevel: profile?.activityLevel || "",
+      occupation: profile?.occupation || "",
+      primaryDoctor: profile?.primaryDoctor || "",
+      preferredResources: profile?.preferredResources as string[] || [],
     },
   });
   
@@ -106,6 +130,18 @@ export default function ProfilePage() {
         email: profile.email || "",
         painBackground: profile.painBackground || "",
         medicalHistory: profile.medicalHistory as string[] || [],
+        // Reset additional fields
+        age: profile.age || undefined,
+        gender: profile.gender || "",
+        height: profile.height || "",
+        weight: profile.weight || "",
+        allergies: profile.allergies as string[] || [],
+        currentMedications: profile.currentMedications as string[] || [],
+        chronicConditions: profile.chronicConditions as string[] || [],
+        activityLevel: profile.activityLevel || "",
+        occupation: profile.occupation || "",
+        primaryDoctor: profile.primaryDoctor || "",
+        preferredResources: profile.preferredResources as string[] || [],
       });
     }
   });
@@ -181,11 +217,148 @@ export default function ProfilePage() {
                         )}
                       />
                       
+                      <h3 className="text-base font-semibold mt-8 mb-4">Demographic Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="age"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Age</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  placeholder="Your age" 
+                                  {...field}
+                                  value={field.value || ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value ? parseInt(e.target.value) : undefined;
+                                    field.onChange(value);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="gender"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Gender</FormLabel>
+                              <FormControl>
+                                <select 
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  {...field}
+                                >
+                                  <option value="">Select gender</option>
+                                  <option value="male">Male</option>
+                                  <option value="female">Female</option>
+                                  <option value="non-binary">Non-binary</option>
+                                  <option value="prefer-not-to-say">Prefer not to say</option>
+                                </select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        <FormField
+                          control={form.control}
+                          name="height"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Height</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., 5'10&quot; or 178cm" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Weight</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., 160lbs or 73kg" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <h3 className="text-base font-semibold mt-8 mb-4">Healthcare Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="primaryDoctor"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Primary Doctor</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Your doctor's name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="occupation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Occupation</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Your current job or role" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Helps identify occupational pain triggers
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <FormField
+                        control={form.control}
+                        name="activityLevel"
+                        render={({ field }) => (
+                          <FormItem className="mt-4">
+                            <FormLabel>Activity Level</FormLabel>
+                            <FormControl>
+                              <select 
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                {...field}
+                              >
+                                <option value="">Select activity level</option>
+                                <option value="sedentary">Sedentary (little to no exercise)</option>
+                                <option value="light">Light (light exercise 1-3 days/week)</option>
+                                <option value="moderate">Moderate (moderate exercise 3-5 days/week)</option>
+                                <option value="active">Active (hard exercise 6-7 days/week)</option>
+                                <option value="very-active">Very Active (very hard exercise & physical job)</option>
+                              </select>
+                            </FormControl>
+                            <FormDescription>
+                              Your typical level of physical activity
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
                       <FormField
                         control={form.control}
                         name="painBackground"
                         render={({ field }) => (
-                          <FormItem>
+                          <FormItem className="mt-4">
                             <FormLabel>Pain History</FormLabel>
                             <FormControl>
                               <Textarea 
@@ -202,7 +375,7 @@ export default function ProfilePage() {
                         )}
                       />
                       
-                      <div className="flex justify-end">
+                      <div className="flex justify-end mt-6">
                         <Button type="submit" disabled={updateProfileMutation.isPending}>
                           {updateProfileMutation.isPending ? (
                             <>

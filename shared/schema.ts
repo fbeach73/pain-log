@@ -13,6 +13,18 @@ export const users = pgTable("users", {
   profileCreated: boolean("profile_created").default(false),
   medicalHistory: json("medical_history").$type<string[]>().default([]),
   painBackground: text("pain_background"),
+  // Additional profile fields for better patient information
+  age: integer("age"),
+  gender: text("gender"),
+  height: text("height"),
+  weight: text("weight"),
+  allergies: json("allergies").$type<string[]>().default([]),
+  currentMedications: json("current_medications").$type<string[]>().default([]),
+  chronicConditions: json("chronic_conditions").$type<string[]>().default([]),
+  activityLevel: text("activity_level"),
+  occupation: text("occupation"),
+  primaryDoctor: text("primary_doctor"),
+  preferredResources: json("preferred_resources").$type<string[]>().default([]),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
