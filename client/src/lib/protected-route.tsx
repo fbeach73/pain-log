@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
@@ -9,9 +10,38 @@ export function ProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refetchUser } = useAuth();
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  if (isLoading) {
+  // Effect to verify authentication status when component mounts
+  useEffect(() => {
+    const verifyAuth = async () => {
+      if (refetchUser) {
+        try {
+          console.log("Protected route: Verifying authentication...");
+          const result = await refetchUser();
+          const authenticated = !!result.data;
+          console.log("Protected route: Authentication verified:", authenticated);
+          setIsAuthenticated(authenticated);
+        } catch (error) {
+          console.error("Protected route: Failed to verify authentication:", error);
+          setIsAuthenticated(false);
+        } finally {
+          setIsVerifying(false);
+        }
+      } else {
+        // If refetchUser is not available, fall back to the current user state
+        setIsAuthenticated(!!user);
+        setIsVerifying(false);
+      }
+    };
+
+    verifyAuth();
+  }, [refetchUser, user, path]);
+
+  // Show loading state while we verify auth or while the original loading is happening
+  if (isLoading || isVerifying) {
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
@@ -21,7 +51,9 @@ export function ProtectedRoute({
     );
   }
 
-  if (!user) {
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    console.log("Protected route: Not authenticated, redirecting to /auth");
     return (
       <Route path={path}>
         <Redirect to="/auth" />
@@ -29,5 +61,6 @@ export function ProtectedRoute({
     );
   }
 
+  // User is authenticated, render the component
   return <Route path={path} component={Component} />;
 }
