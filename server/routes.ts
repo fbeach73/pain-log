@@ -29,24 +29,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the user ID from session if available, otherwise use the one from the request body
       const userId = req.isAuthenticated() ? req.user.id : req.body.userId;
       
-      // Make sure the userId is included in the data to validate
-      // Fix the date type issue by parsing string date into a real Date object
-      const dataToValidate = {
-        ...req.body,
-        userId: userId,
-        date: req.body.date ? new Date(req.body.date) : new Date() // Convert string to Date object
-      };
-      
-      console.log("Validating pain entry data with userId:", userId, "and date:", dataToValidate.date);
-      
-      // Custom validation schema that accepts ISO strings for dates
-      const customSchema = insertPainEntrySchema.extend({
-        date: z.string().transform(val => new Date(val)),
+      // Create a modified version of the insertPainEntrySchema that accepts string dates
+      const modifiedSchema = insertPainEntrySchema.extend({
+        date: z.string().or(z.date()).transform(val => {
+          if (typeof val === 'string') {
+            return new Date(val);
+          }
+          return val;
+        })
       });
       
-      const validatedData = customSchema.parse(dataToValidate);
-      console.log("Pain entry data validated successfully, creating entry");
+      // Prepare data for validation including the userId
+      const painData = {
+        ...req.body,
+        userId: userId
+      };
       
+      console.log("Validating pain entry data with userId:", userId);
+      
+      // Validate and transform the data using our modified schema
+      const validatedData = modifiedSchema.parse(painData);
+      
+      console.log("Pain entry data validated successfully with date:", validatedData.date);
+      
+      // Save the entry with the validated data
       const painEntry = await storage.createPainEntry(validatedData);
       console.log("Pain entry created successfully:", painEntry.id);
       res.status(201).json(painEntry);
