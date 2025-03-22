@@ -130,7 +130,32 @@ export default function PainForm() {
       return;
     }
     
-    logPainMutation.mutate(values);
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save your pain entry",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+    
+    logPainMutation.mutate(values, {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: "Your pain entry has been saved",
+        });
+        navigate("/");
+      },
+      onError: (error) => {
+        toast({
+          title: "Error saving entry",
+          description: error.message || "Please try again",
+          variant: "destructive",
+        });
+      }
+    });
   };
 
   const toggleLocation = (location: string) => {
@@ -376,10 +401,10 @@ export default function PainForm() {
                         type="button"
                         className={`flex-1 ${
                           field.value
-                            ? "bg-primary-100 text-primary-700 hover:bg-primary-200"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            ? "bg-primary text-white hover:bg-primary/90"
+                            : "bg-slate-200 text-slate-800 hover:bg-slate-300"
                         }`}
-                        variant="outline"
+                        variant={field.value ? "default" : "outline"}
                         onClick={() => field.onChange(true)}
                       >
                         Yes
@@ -388,10 +413,10 @@ export default function PainForm() {
                         type="button"
                         className={`flex-1 ${
                           !field.value
-                            ? "bg-primary-100 text-primary-700 hover:bg-primary-200"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            ? "bg-primary text-white hover:bg-primary/90"
+                            : "bg-slate-200 text-slate-800 hover:bg-slate-300"
                         }`}
-                        variant="outline"
+                        variant={!field.value ? "default" : "outline"}
                         onClick={() => field.onChange(false)}
                       >
                         No
@@ -432,7 +457,7 @@ export default function PainForm() {
               <div className="flex gap-4">
                 <Button 
                   type="submit" 
-                  className="flex-1" 
+                  className="flex-1 bg-primary text-white hover:bg-primary/90 font-medium" 
                   disabled={logPainMutation.isPending}
                 >
                   {logPainMutation.isPending && (
@@ -443,7 +468,7 @@ export default function PainForm() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  className="flex-1"
+                  className="flex-1 border-slate-300 hover:bg-slate-100"
                   onClick={() => navigate("/")}
                 >
                   Cancel
