@@ -30,7 +30,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
-  const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const { user, isLoading, loginMutation, registerMutation, refetchUser } = useAuth();
   
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -62,6 +62,16 @@ export default function AuthPage() {
     const { confirmPassword, ...userData } = values;
     registerMutation.mutate(userData);
   };
+
+  // Effect to handle successful login/registration and force refetch of user data
+  useEffect(() => {
+    if (loginMutation.isSuccess || registerMutation.isSuccess) {
+      refetchUser?.().then(() => {
+        console.log("User refetched after successful auth");
+        navigate("/");
+      });
+    }
+  }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
   // Redirect if already logged in
   useEffect(() => {

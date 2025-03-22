@@ -39,6 +39,7 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
+    proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
       secure: false, // Set to false during development
