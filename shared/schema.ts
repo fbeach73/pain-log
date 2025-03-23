@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, json, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -81,6 +81,32 @@ export const insertMedicationSchema = createInsertSchema(medications).pick({
   active: true,
 });
 
+// Reminder settings schema
+export const reminderSettings = pgTable("reminder_settings", {
+  userId: integer("user_id").notNull().primaryKey(),
+  emailNotifications: boolean("email_notifications").default(true),
+  painLogReminders: boolean("pain_log_reminders").default(true),
+  medicationReminders: boolean("medication_reminders").default(true),
+  wellnessReminders: boolean("wellness_reminders").default(true),
+  weeklySummary: boolean("weekly_summary").default(true),
+  reminderFrequency: text("reminder_frequency").default("daily"),
+  preferredTime: text("preferred_time").default("evening"),
+  notificationStyle: text("notification_style").default("gentle"),
+  lastUpdated: timestamp("last_updated").defaultNow()
+});
+
+export const insertReminderSettingsSchema = createInsertSchema(reminderSettings).pick({
+  userId: true,
+  emailNotifications: true,
+  painLogReminders: true,
+  medicationReminders: true,
+  wellnessReminders: true,
+  weeklySummary: true,
+  reminderFrequency: true,
+  preferredTime: true,
+  notificationStyle: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -88,3 +114,5 @@ export type PainEntry = typeof painEntries.$inferSelect;
 export type InsertPainEntry = z.infer<typeof insertPainEntrySchema>;
 export type Medication = typeof medications.$inferSelect;
 export type InsertMedication = z.infer<typeof insertMedicationSchema>;
+export type ReminderSetting = typeof reminderSettings.$inferSelect;
+export type InsertReminderSetting = z.infer<typeof insertReminderSettingsSchema>;

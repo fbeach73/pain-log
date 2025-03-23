@@ -1,4 +1,9 @@
-import { users, type User, type InsertUser, painEntries, type PainEntry, type InsertPainEntry, medications, type Medication, type InsertMedication } from "@shared/schema";
+import { 
+  users, type User, type InsertUser, 
+  painEntries, type PainEntry, type InsertPainEntry, 
+  medications, type Medication, type InsertMedication,
+  reminderSettings, type ReminderSetting, type InsertReminderSetting 
+} from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { format } from "date-fns";
