@@ -1298,7 +1298,7 @@ class MemStorage implements IStorage {
     }
   }
   
-  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
+  async getReminderSettings(userId: number): Promise<ReminderSetting | undefined> {
     return this.withFallback(
       // PostgreSQL operation
       async () => {
@@ -1341,7 +1341,7 @@ class MemStorage implements IStorage {
     );
   }
   
-  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
+  async updateReminderSettings(userId: number, settings: Partial<ReminderSetting>): Promise<ReminderSetting> {
     return this.withFallback(
       // PostgreSQL operation
       async () => {
@@ -1376,51 +1376,6 @@ class MemStorage implements IStorage {
       async () => this.memFallback.updateReminderSettings(userId, settings),
       'Error updating reminder settings'
     );
-  }
-
-  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
-    // Check if settings exist for this user
-    let settings = this.reminderSettings.get(userId);
-    
-    // If not, create default settings
-    if (!settings) {
-      const defaults: ReminderSettings = {
-        userId,
-        emailNotifications: true,
-        painLogReminders: true,
-        medicationReminders: true,
-        wellnessReminders: true,
-        weeklySummary: true,
-        reminderFrequency: "daily",
-        preferredTime: "evening",
-        notificationStyle: "gentle",
-        lastUpdated: new Date()
-      };
-      
-      this.reminderSettings.set(userId, defaults);
-      settings = defaults;
-    }
-    
-    return settings;
-  }
-
-  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
-    const currentSettings = await this.getReminderSettings(userId);
-    
-    if (!currentSettings) {
-      throw new Error('Reminder settings not found for user');
-    }
-    
-    const updatedSettings: ReminderSettings = {
-      ...currentSettings,
-      ...settings,
-      userId,
-      lastUpdated: new Date()
-    };
-    
-    // Save to our Map
-    this.reminderSettings.set(userId, updatedSettings);
-    return updatedSettings;
   }
 }
 
