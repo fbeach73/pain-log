@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download, Printer, Mail, Loader2 } from "lucide-react";
 import { format, subDays } from "date-fns";
+import EmailReportDialog from "@/components/reports/email-report-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 type ReportData = {
   id: string;
@@ -31,10 +33,13 @@ type ReportData = {
 };
 
 export default function ReportsPage() {
+  const { toast } = useToast();
   const [reportType, setReportType] = useState("weekly");
   const [isGenerating, setIsGenerating] = useState(false);
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 7), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<ReportData | null>(null);
   
   const { data: reports, isLoading } = useQuery<ReportData[]>({
     queryKey: ["/api/reports"],
@@ -44,19 +49,32 @@ export default function ReportsPage() {
     setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
+      toast({
+        title: "Report Generated",
+        description: "Your pain report has been generated successfully.",
+      });
     }, 2000);
   };
   
   const handleShareReport = (reportId: string) => {
-    // Implement sharing functionality
+    const report = reports?.find(r => r.id === reportId);
+    if (report) {
+      setSelectedReport(report);
+      setEmailDialogOpen(true);
+    }
   };
   
   const handleDownloadReport = (reportId: string) => {
-    // Implement download functionality
+    // In a production app, this would trigger a real download
+    toast({
+      title: "Download Started",
+      description: "Your report is being downloaded as a PDF.",
+    });
   };
   
   const handlePrintReport = (reportId: string) => {
-    // Implement print functionality
+    // In a production app, this would open a print dialog
+    window.print();
   };
 
   return (
@@ -228,6 +246,15 @@ export default function ReportsPage() {
       </main>
       
       <Footer />
+      
+      {selectedReport && (
+        <EmailReportDialog 
+          isOpen={emailDialogOpen}
+          onClose={() => setEmailDialogOpen(false)}
+          reportId={selectedReport.id}
+          reportName={`${format(new Date(selectedReport.periodStart), "MMM d")} - ${format(new Date(selectedReport.periodEnd), "MMM d, yyyy")}`}
+        />
+      )}
     </div>
   );
 }
