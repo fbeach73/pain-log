@@ -111,27 +111,83 @@ export class PostgresStorage implements IStorage {
   private pool: Pool;
   private db: ReturnType<typeof drizzle>;
   sessionStore: any; // Use any to avoid type errors with session store
+  private connectionFailed = false;
+  private memFallback: MemStorage;
 
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL not found in environment");
+    // Initialize MemStorage as fallback
+    this.memFallback = new MemStorage();
+    
+    try {
+      if (!process.env.DATABASE_URL) {
+        throw new Error("DATABASE_URL not found in environment");
+      }
+      
+      this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      this.db = drizzle(this.pool);
+      
+      // Test the connection but don't throw an error if it fails
+      // This allows the app to use PostgreSQL when it's working but gracefully handle failures
+      this.pool.query('SELECT 1')
+        .then(() => {
+          console.log('Successfully connected to PostgreSQL database');
+          this.connectionFailed = false;
+        })
+        .catch(err => {
+          console.error('Warning: PostgreSQL connection test failed:', err);
+          this.connectionFailed = true;
+        });
+      
+      // Use PostgreSQL for session storage with fallback to memory store
+      try {
+        const pgSession = ConnectPgSimple(session);
+        this.sessionStore = new pgSession({
+          pool: this.pool,
+          tableName: 'user_sessions',
+          // Make the session store more resilient to connection issues
+          errorLog: (error) => console.error('Session store error:', error)
+        });
+      } catch (err) {
+        console.error('Session store initialization failed, using memory store instead:', err);
+        this.sessionStore = this.memFallback.sessionStore;
+      }
+      
+      // Initialize database tables if needed
+      this.initializeDatabase();
+      
+      // Log to confirm initialization
+      console.log('Storage initialized with PostgreSQL and MemStorage fallback');
+    } catch (error) {
+      console.error('Failed to initialize PostgreSQL storage, using MemStorage instead:', error);
+      this.connectionFailed = true;
+      // Use the in-memory session store
+      this.sessionStore = this.memFallback.sessionStore;
+    }
+  }
+  
+  // Helper method to handle fallback to in-memory storage when database operations fail
+  private async withFallback<T>(
+    pgOperation: () => Promise<T>, 
+    memOperation: () => Promise<T>,
+    errorMessage: string
+  ): Promise<T> {
+    // If we already know the connection failed, use memory storage directly
+    if (this.connectionFailed) {
+      return memOperation();
     }
     
-    this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    this.db = drizzle(this.pool);
-    
-    // Use PostgreSQL for session storage
-    const pgSession = ConnectPgSimple(session);
-    this.sessionStore = new pgSession({
-      pool: this.pool,
-      tableName: 'user_sessions'
-    });
-    
-    // Initialize database tables if needed
-    this.initializeDatabase();
-    
-    // Log to confirm initialization
-    console.log('Storage initialized with PostgreSQL');
+    try {
+      // Try the PostgreSQL operation first
+      return await pgOperation();
+    } catch (error) {
+      // Log the error and mark the connection as failed
+      console.error(`${errorMessage}:`, error);
+      this.connectionFailed = true;
+      
+      // Fall back to memory storage
+      console.log('Falling back to in-memory storage for this operation');
+      return memOperation();
+    }
   }
 
   private async initializeDatabase() {
@@ -142,26 +198,43 @@ export class PostgresStorage implements IStorage {
       console.error('Error initializing database tables:', error);
     }
   }
-
-  // USER MANAGEMENT
-  async getUser(id: number): Promise<User | undefined> {
+  
+  // Test connection method used by StorageWrapper
+  async testConnection(): Promise<boolean> {
     try {
-      const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-      return result[0];
+      const result = await this.pool.query('SELECT 1 as test');
+      return result && result.rows && result.rows.length > 0;
     } catch (error) {
-      console.error('Error getting user:', error);
-      return undefined;
+      console.error('Database connection test failed:', error);
+      return false;
     }
   }
 
+  // USER MANAGEMENT
+  async getUser(id: number): Promise<User | undefined> {
+    return this.withFallback(
+      // PostgreSQL operation
+      async () => {
+        const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+        return result[0];
+      },
+      // In-memory fallback operation
+      async () => this.memFallback.getUser(id),
+      'Error getting user'
+    );
+  }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting user by username:', error);
-      return undefined;
-    }
+    return this.withFallback(
+      // PostgreSQL operation
+      async () => {
+        const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+        return result[0];
+      },
+      // In-memory fallback operation
+      async () => this.memFallback.getUserByUsername(username),
+      'Error getting user by username'
+    );
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -734,6 +807,43 @@ class MemStorage implements IStorage {
     this.initializeResources();
     console.log('Storage initialized with in-memory session store');
   }
+  
+  private initializeResources() {
+    // Add some default resources
+    const resources: Resource[] = [
+      {
+        id: "res-1",
+        title: "Understanding Chronic Pain",
+        description: "Learn about the mechanisms of chronic pain and how it differs from acute pain.",
+        type: "article",
+        source: "National Institute of Health",
+        url: "https://www.nih.gov/health-information/pain",
+        tags: ["Education", "Chronic Pain"]
+      },
+      {
+        id: "res-2",
+        title: "Guided Meditation for Pain Relief",
+        description: "A 15-minute guided meditation designed to help manage pain through mindfulness.",
+        type: "video",
+        source: "Pain Management Center",
+        url: "https://www.youtube.com/watch?v=1vx8iUvfyCY",
+        tags: ["Meditation", "Mindfulness", "Relaxation"]
+      },
+      {
+        id: "res-3",
+        title: "Gentle Stretching Exercises for Back Pain",
+        description: "Safe stretching routines that can help alleviate back pain and improve mobility.",
+        type: "exercise",
+        source: "American Physical Therapy Association",
+        url: "https://www.choosept.com/guide/physical-therapy-guide-low-back-pain",
+        tags: ["Exercise", "Back Pain", "Stretching"]
+      }
+    ];
+    
+    resources.forEach(resource => {
+      this.resources.set(resource.id, resource);
+    });
+  }
 
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
@@ -1185,7 +1295,150 @@ class MemStorage implements IStorage {
   }
 }
 
-// Use PostgreSQL storage for data persistence
-export const storage = process.env.DATABASE_URL 
-  ? new PostgresStorage() 
-  : new MemStorage();
+// Create storage wrapper that initializes properly and falls back to MemStorage when needed
+class StorageWrapper implements IStorage {
+  private pgStorage: PostgresStorage | null = null;
+  private memStorage: MemStorage;
+  private useMemory: boolean = false;
+  sessionStore: any;
+
+  constructor() {
+    console.log('Initializing storage system...');
+    this.memStorage = new MemStorage();
+    
+    // Use memory store for session by default (will be replaced if PG connection succeeds)
+    this.sessionStore = this.memStorage.sessionStore;
+    
+    if (!process.env.DATABASE_URL) {
+      console.log('No DATABASE_URL provided, using in-memory storage only');
+      this.useMemory = true;
+      return;
+    }
+    
+    try {
+      // Try to initialize PostgreSQL connection
+      this.pgStorage = new PostgresStorage();
+      
+      // Set session store from PostgreSQL
+      this.sessionStore = this.pgStorage.sessionStore;
+      
+      // Test the connection immediately but don't block initialization
+      this.testConnection();
+    } catch (error) {
+      console.error('Failed to initialize PostgreSQL storage, falling back to memory storage:', error);
+      this.useMemory = true;
+      this.pgStorage = null;
+    }
+  }
+  
+  // Test database connection and set useMemory flag if it fails
+  private async testConnection() {
+    if (!this.pgStorage) return;
+    
+    try {
+      // Simple query to test if the database is accessible
+      const result = await this.pgStorage.testConnection();
+      this.useMemory = !result;
+      if (result) {
+        console.log('PostgreSQL connection test successful, using database storage');
+      } else {
+        console.error('PostgreSQL connection test failed, using memory storage');
+      }
+    } catch (error) {
+      console.error('PostgreSQL connection test failed, using memory storage:', error);
+      this.useMemory = true;
+    }
+  }
+  
+  // Helper to route method calls to the appropriate storage implementation
+  private getStorage(): IStorage {
+    return (this.useMemory || !this.pgStorage) ? this.memStorage : this.pgStorage;
+  }
+  
+  // Implement all IStorage methods by delegating to the appropriate storage implementation
+
+  // USER MANAGEMENT
+  async getUser(id: number): Promise<User | undefined> {
+    return this.getStorage().getUser(id);
+  }
+  
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return this.getStorage().getUserByUsername(username);
+  }
+  
+  async createUser(user: InsertUser): Promise<User> {
+    return this.getStorage().createUser(user);
+  }
+  
+  async updateUser(id: number, userData: Partial<User>): Promise<User> {
+    return this.getStorage().updateUser(id, userData);
+  }
+  
+  // PAIN ENTRIES
+  async createPainEntry(entry: InsertPainEntry): Promise<PainEntry> {
+    return this.getStorage().createPainEntry(entry);
+  }
+  
+  async getPainEntriesByUserId(userId: number): Promise<PainEntry[]> {
+    return this.getStorage().getPainEntriesByUserId(userId);
+  }
+  
+  async getRecentPainEntries(userId: number, limit: number): Promise<PainEntry[]> {
+    return this.getStorage().getRecentPainEntries(userId, limit);
+  }
+  
+  async getPainTrend(userId: number, days: number): Promise<PainEntry[]> {
+    return this.getStorage().getPainTrend(userId, days);
+  }
+  
+  async getTriggerStats(userId: number): Promise<TriggerStat[]> {
+    return this.getStorage().getTriggerStats(userId);
+  }
+  
+  async getPatterns(userId: number): Promise<Pattern[]> {
+    return this.getStorage().getPatterns(userId);
+  }
+  
+  // MEDICATIONS
+  async createMedication(medication: InsertMedication): Promise<Medication> {
+    return this.getStorage().createMedication(medication);
+  }
+  
+  async getMedicationsByUserId(userId: number): Promise<Medication[]> {
+    return this.getStorage().getMedicationsByUserId(userId);
+  }
+  
+  async getTodayMedications(userId: number): Promise<MedicationWithStatus[]> {
+    return this.getStorage().getTodayMedications(userId);
+  }
+  
+  async takeMedication(medicationId: number, doseIndex: number): Promise<any> {
+    return this.getStorage().takeMedication(medicationId, doseIndex);
+  }
+  
+  // RESOURCES & RECOMMENDATIONS
+  async getRecommendations(userId: number): Promise<Recommendation[]> {
+    return this.getStorage().getRecommendations(userId);
+  }
+  
+  async getResources(): Promise<Resource[]> {
+    return this.getStorage().getResources();
+  }
+  
+  // REPORTS
+  async getReportsByUserId(userId: number): Promise<Report[]> {
+    return this.getStorage().getReportsByUserId(userId);
+  }
+  
+  // REMINDER SETTINGS
+  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
+    return this.getStorage().getReminderSettings(userId);
+  }
+  
+  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
+    return this.getStorage().updateReminderSettings(userId, settings);
+  }
+}
+
+// Export a single instance of StorageWrapper to be used throughout the application
+export const storage = new StorageWrapper();
