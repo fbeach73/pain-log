@@ -47,6 +47,8 @@ export const painEntries = pgTable("pain_entries", {
   notes: text("notes"),
   medicationTaken: boolean("medication_taken").default(false),
   medications: json("medications").$type<string[]>(),
+  mood: text("mood"),
+  moodRating: integer("mood_rating"),
 });
 
 export const insertPainEntrySchema = createInsertSchema(painEntries).pick({
@@ -59,6 +61,8 @@ export const insertPainEntrySchema = createInsertSchema(painEntries).pick({
   notes: true,
   medicationTaken: true,
   medications: true,
+  mood: true,
+  moodRating: true,
 });
 
 // Medication schema
