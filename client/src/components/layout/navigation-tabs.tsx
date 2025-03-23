@@ -60,14 +60,14 @@ export default function NavigationTabs() {
   return (
     <div className="bg-white border-b">
       <div className="px-4 sm:px-6 md:px-8">
-        <nav className="flex -mb-px space-x-6 overflow-x-auto">
+        <nav className="flex -mb-px space-x-4 md:space-x-6 overflow-x-auto scrollbar-hide">
           {navItems.map((item) => (
             <button
               key={item.path}
               onClick={() => handleNavigation(item.path)}
               disabled={isVerifying}
               className={cn(
-                "whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm",
+                "whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex-shrink-0",
                 location === item.path
                   ? "border-primary text-primary font-semibold"
                   : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
