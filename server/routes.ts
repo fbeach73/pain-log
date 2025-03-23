@@ -154,10 +154,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!req.isAuthenticated()) return res.sendStatus(401);
       
-      const validatedData = insertMedicationSchema.parse(req.body);
+      // Set userId from authenticated user
+      const userId = req.user!.id;
+      const medicationData = {
+        ...req.body,
+        userId: userId
+      };
+      
+      console.log("Creating medication with data:", medicationData);
+      
+      const validatedData = insertMedicationSchema.parse(medicationData);
       const medication = await storage.createMedication(validatedData);
+      
+      console.log("Medication created successfully:", medication);
+      
       res.status(201).json(medication);
     } catch (error) {
+      console.error("Error creating medication:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.message });
       }

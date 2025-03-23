@@ -47,8 +47,7 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
       name: "",
       dosage: "",
       frequency: "Daily",
-      timeOfDay: ["Morning"],
-      userId: 0 // This will be set on the server
+      timeOfDay: ["Morning"]
     },
     mode: "onChange"
   });
