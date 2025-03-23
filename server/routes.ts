@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -6,8 +6,13 @@ import { z } from "zod";
 import { insertPainEntrySchema, insertMedicationSchema } from "@shared/schema";
 import { PainTrendData } from "../client/src/types/pain";
 import { format, subDays } from "date-fns";
+import { generatePainLogPDF } from "./utils/pdf-generator";
+import { initializeEmailService, sendEmailWithAttachment } from "./utils/email-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize email service
+  initializeEmailService();
+  
   // Set up authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
 
