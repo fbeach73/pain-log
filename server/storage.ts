@@ -769,13 +769,13 @@ export class PostgresStorage implements IStorage {
   }
   
   // REMINDER SETTINGS
-  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
+  async getReminderSettings(userId: number): Promise<ReminderSetting | undefined> {
     // Check if settings exist for this user
     let settings = this.reminderSettings.get(userId);
     
     // If not, create default settings
     if (!settings) {
-      const defaults: ReminderSettings = {
+      const defaults: InsertReminderSetting = {
         userId,
         emailNotifications: true,
         painLogReminders: true,
@@ -787,20 +787,39 @@ export class PostgresStorage implements IStorage {
         notificationStyle: "gentle"
       };
       
-      this.reminderSettings.set(userId, defaults);
-      settings = defaults;
+      // Create a ReminderSetting object (which includes system-generated fields)
+      const newSettings: ReminderSetting = {
+        userId,
+        emailNotifications: defaults.emailNotifications,
+        painLogReminders: defaults.painLogReminders,
+        medicationReminders: defaults.medicationReminders,
+        wellnessReminders: defaults.wellnessReminders,
+        weeklySummary: defaults.weeklySummary,
+        reminderFrequency: defaults.reminderFrequency,
+        preferredTime: defaults.preferredTime,
+        notificationStyle: defaults.notificationStyle,
+        lastUpdated: new Date()
+      };
+      
+      this.reminderSettings.set(userId, newSettings);
+      settings = newSettings;
     }
     
     return settings;
   }
   
-  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
+  async updateReminderSettings(userId: number, settings: Partial<ReminderSetting>): Promise<ReminderSetting> {
     const currentSettings = await this.getReminderSettings(userId);
     
-    const updatedSettings: ReminderSettings = {
-      ...currentSettings!,
+    if (!currentSettings) {
+      throw new Error('Reminder settings not found for user');
+    }
+    
+    const updatedSettings: ReminderSetting = {
+      ...currentSettings,
       ...settings,
-      userId
+      userId,
+      lastUpdated: new Date()
     };
     
     // Save to our Map
@@ -816,7 +835,7 @@ class MemStorage implements IStorage {
   private medicationTaken: Map<string, boolean>;
   private resources: Map<string, Resource>;
   private reports: Map<string, Report>;
-  private reminderSettings: Map<number, ReminderSettings>;
+  private reminderSettings: Map<number, ReminderSetting>;
   private currentUserId: number;
   private currentPainEntryId: number;
   private currentMedicationId: number;
@@ -1505,11 +1524,11 @@ class StorageWrapper implements IStorage {
   }
   
   // REMINDER SETTINGS
-  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
+  async getReminderSettings(userId: number): Promise<ReminderSetting | undefined> {
     return this.getStorage().getReminderSettings(userId);
   }
   
-  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
+  async updateReminderSettings(userId: number, settings: Partial<ReminderSetting>): Promise<ReminderSetting> {
     return this.getStorage().updateReminderSettings(userId, settings);
   }
 }
