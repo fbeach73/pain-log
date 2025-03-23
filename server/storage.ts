@@ -105,7 +105,7 @@ import { eq, desc, and, sql } from 'drizzle-orm';
 const { Pool } = pg;
 
 export class PostgresStorage implements IStorage {
-  private pool!: Pool; // Use ! to tell TypeScript this will be initialized
+  private pool!: typeof Pool.prototype; // Use ! to tell TypeScript this will be initialized
   private db!: ReturnType<typeof drizzle>; // Use ! to tell TypeScript this will be initialized
   sessionStore: any; // Use any to avoid type errors with session store
   private connectionFailed = false;
@@ -768,64 +768,7 @@ export class PostgresStorage implements IStorage {
     ];
   }
   
-  // REMINDER SETTINGS
-  async getReminderSettings(userId: number): Promise<ReminderSetting | undefined> {
-    // Check if settings exist for this user
-    let settings = this.reminderSettings.get(userId);
-    
-    // If not, create default settings
-    if (!settings) {
-      const defaults: InsertReminderSetting = {
-        userId,
-        emailNotifications: true,
-        painLogReminders: true,
-        medicationReminders: true,
-        wellnessReminders: true,
-        weeklySummary: true,
-        reminderFrequency: "daily",
-        preferredTime: "evening",
-        notificationStyle: "gentle"
-      };
-      
-      // Create a ReminderSetting object (which includes system-generated fields)
-      const newSettings: ReminderSetting = {
-        userId,
-        emailNotifications: defaults.emailNotifications,
-        painLogReminders: defaults.painLogReminders,
-        medicationReminders: defaults.medicationReminders,
-        wellnessReminders: defaults.wellnessReminders,
-        weeklySummary: defaults.weeklySummary,
-        reminderFrequency: defaults.reminderFrequency,
-        preferredTime: defaults.preferredTime,
-        notificationStyle: defaults.notificationStyle,
-        lastUpdated: new Date()
-      };
-      
-      this.reminderSettings.set(userId, newSettings);
-      settings = newSettings;
-    }
-    
-    return settings;
-  }
-  
-  async updateReminderSettings(userId: number, settings: Partial<ReminderSetting>): Promise<ReminderSetting> {
-    const currentSettings = await this.getReminderSettings(userId);
-    
-    if (!currentSettings) {
-      throw new Error('Reminder settings not found for user');
-    }
-    
-    const updatedSettings: ReminderSetting = {
-      ...currentSettings,
-      ...settings,
-      userId,
-      lastUpdated: new Date()
-    };
-    
-    // Save to our Map
-    this.reminderSettings.set(userId, updatedSettings);
-    return updatedSettings;
-  }
+  // REMINDER SETTINGS are handled in the withFallback methods below
 }
 
 class MemStorage implements IStorage {
