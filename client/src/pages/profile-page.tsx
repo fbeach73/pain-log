@@ -473,7 +473,7 @@ export default function ProfilePage() {
                                     >
                                       <FormControl>
                                         <Checkbox
-                                          checked={form.getValues("chronicConditions")?.includes(condition)}
+                                          checked={(form.getValues("chronicConditions") || []).includes(condition)}
                                           onCheckedChange={(checked) => {
                                             const currentValues = form.getValues("chronicConditions") || [];
                                             
@@ -519,7 +519,7 @@ export default function ProfilePage() {
                                       type="button"
                                       className="text-slate-500 hover:text-slate-700"
                                       onClick={() => {
-                                        const newValues = [...field.value];
+                                        const newValues = [...(field.value || [])];
                                         newValues.splice(index, 1);
                                         field.onChange(newValues);
                                       }}
@@ -566,7 +566,7 @@ export default function ProfilePage() {
                                       type="button"
                                       className="text-slate-500 hover:text-slate-700"
                                       onClick={() => {
-                                        const newValues = [...field.value];
+                                        const newValues = [...(field.value || [])];
                                         newValues.splice(index, 1);
                                         field.onChange(newValues);
                                       }}
