@@ -80,12 +80,14 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "returnNull" }),
       refetchInterval: false,
       refetchOnWindowFocus: true, // Enable refetching when the window focus changes
-      staleTime: 60 * 1000, // 1 minute
-      retry: 1, // Try once more on failure
+      refetchOnMount: true, // Always refetch when component mounts
+      refetchOnReconnect: true, // Refetch when reconnecting
+      staleTime: 0, // Consider data stale immediately for authentication queries
+      retry: 2, // Try twice more on failure
       gcTime: 10 * 60 * 1000 // 10 minutes
     },
     mutations: {
-      retry: 1, // Try once more on failure
+      retry: 2, // Try twice more on failure
     },
   },
 });

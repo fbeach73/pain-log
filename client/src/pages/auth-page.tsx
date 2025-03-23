@@ -73,9 +73,29 @@ export default function AuthPage() {
     }
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
+  // Attempt to recover session on auth page load
+  useEffect(() => {
+    // Only try to recover session if we have no user yet and we're not currently loading
+    if (!user && !isLoading && refetchUser) {
+      console.log("Auth page: Attempting to recover session...");
+      
+      // Try to recover the session once on component mount
+      refetchUser().then((result) => {
+        if (result.data) {
+          console.log("Auth page: Session recovered successfully");
+        } else {
+          console.log("Auth page: No active session found");
+        }
+      }).catch(error => {
+        console.error("Auth page: Failed to recover session:", error);
+      });
+    }
+  }, []);
+
   // Redirect if already logged in, but add a small delay to prevent flickering
   useEffect(() => {
     if (user) {
+      console.log("Auth page: User is authenticated, redirecting to dashboard...");
       // Use a small timeout to prevent flickering during redirects/state changes
       const redirectTimer = setTimeout(() => {
         navigate("/");

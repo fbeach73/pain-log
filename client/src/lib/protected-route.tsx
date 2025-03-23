@@ -16,28 +16,53 @@ export function ProtectedRoute({
 
   // Effect to verify authentication status when component mounts
   useEffect(() => {
+    let isMounted = true;
+    let retryAttempts = 0;
+    const maxRetries = 3;
+    
     const verifyAuth = async () => {
-      if (refetchUser) {
-        try {
-          console.log("Protected route: Verifying authentication...");
-          const result = await refetchUser();
-          const authenticated = !!result.data;
-          console.log("Protected route: Authentication verified:", authenticated);
-          setIsAuthenticated(authenticated);
-        } catch (error) {
-          console.error("Protected route: Failed to verify authentication:", error);
-          setIsAuthenticated(false);
-        } finally {
+      if (!refetchUser) {
+        if (isMounted) {
+          setIsAuthenticated(!!user);
           setIsVerifying(false);
         }
-      } else {
-        // If refetchUser is not available, fall back to the current user state
-        setIsAuthenticated(!!user);
-        setIsVerifying(false);
+        return;
+      }
+      
+      try {
+        console.log("Protected route: Verifying authentication...");
+        const result = await refetchUser();
+        const authenticated = !!result.data;
+        console.log("Protected route: Authentication verified:", authenticated);
+        
+        if (isMounted) {
+          setIsAuthenticated(authenticated);
+          setIsVerifying(false);
+        }
+      } catch (error) {
+        console.error("Protected route: Failed to verify authentication:", error);
+        
+        // Implement retry mechanism for auth verification
+        if (retryAttempts < maxRetries) {
+          retryAttempts++;
+          console.log(`Protected route: Retrying authentication (${retryAttempts}/${maxRetries})...`);
+          setTimeout(verifyAuth, 1000); // Wait 1 second before retry
+          return;
+        }
+        
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setIsVerifying(false);
+        }
       }
     };
 
     verifyAuth();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, [refetchUser, user, path]);
 
   // Show loading state while we verify auth or while the original loading is happening
