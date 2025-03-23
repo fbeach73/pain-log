@@ -53,6 +53,19 @@ type Report = {
 
 const MemoryStore = createMemoryStore(session);
 
+// Define the reminder settings type
+type ReminderSettings = {
+  userId: number;
+  emailNotifications: boolean;
+  painLogReminders: boolean;
+  medicationReminders: boolean;
+  wellnessReminders: boolean;
+  weeklySummary: boolean;
+  reminderFrequency: string;
+  preferredTime: string;
+  notificationStyle: string;
+};
+
 export interface IStorage {
   // User management
   getUser(id: number): Promise<User | undefined>;
@@ -80,6 +93,10 @@ export interface IStorage {
   
   // Reports
   getReportsByUserId(userId: number): Promise<Report[]>;
+  
+  // Reminder Settings
+  getReminderSettings(userId: number): Promise<ReminderSettings | undefined>;
+  updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings>;
   
   // Session store
   sessionStore: ReturnType<typeof createMemoryStore>;
@@ -528,6 +545,7 @@ class MemStorage implements IStorage {
   private medicationTaken: Map<string, boolean>;
   private resources: Map<string, Resource>;
   private reports: Map<string, Report>;
+  private reminderSettings: Map<number, ReminderSettings>;
   private currentUserId: number;
   private currentPainEntryId: number;
   private currentMedicationId: number;
@@ -540,6 +558,7 @@ class MemStorage implements IStorage {
     this.medicationTaken = new Map();
     this.resources = new Map();
     this.reports = new Map();
+    this.reminderSettings = new Map();
     this.currentUserId = 1;
     this.currentPainEntryId = 1;
     this.currentMedicationId = 1;
