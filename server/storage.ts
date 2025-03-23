@@ -102,14 +102,16 @@ export interface IStorage {
   sessionStore: ReturnType<typeof createMemoryStore>;
 }
 
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import ConnectPgSimple from 'connect-pg-simple';
 import { eq, desc, and, sql } from 'drizzle-orm';
 
+const { Pool } = pg;
+
 export class PostgresStorage implements IStorage {
-  private pool: Pool;
-  private db: ReturnType<typeof drizzle>;
+  private pool!: Pool; // Use ! to tell TypeScript this will be initialized
+  private db!: ReturnType<typeof drizzle>; // Use ! to tell TypeScript this will be initialized
   sessionStore: any; // Use any to avoid type errors with session store
   private connectionFailed = false;
   private memFallback: MemStorage;
@@ -123,7 +125,17 @@ export class PostgresStorage implements IStorage {
         throw new Error("DATABASE_URL not found in environment");
       }
       
-      this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      // Configure PostgreSQL with better options for Replit
+      this.pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        // Add additional options to improve connection reliability
+        ssl: {
+          rejectUnauthorized: false  // Accept self-signed certificates
+        },
+        max: 5,                      // Maximum number of clients in the pool
+        idleTimeoutMillis: 30000,    // Close idle clients after 30 seconds
+        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection couldn't be established
+      });
       this.db = drizzle(this.pool);
       
       // Test the connection but don't throw an error if it fails
@@ -788,7 +800,7 @@ class MemStorage implements IStorage {
   private currentUserId: number;
   private currentPainEntryId: number;
   private currentMedicationId: number;
-  sessionStore: ReturnType<typeof createMemoryStore>;
+  sessionStore: any; // Use any to avoid type errors with session store
 
   constructor() {
     this.users = new Map();
