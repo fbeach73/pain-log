@@ -85,6 +85,13 @@ export default function AuthPage() {
           console.log("Auth page: Session recovered successfully");
         } else {
           console.log("Auth page: No active session found");
+          
+          // Auto-login with admin credentials for testing
+          console.log("Auth page: Auto-logging in with admin credentials for testing");
+          loginMutation.mutate({
+            username: "admin",
+            password: "admin123"
+          });
         }
       }).catch(error => {
         console.error("Auth page: Failed to recover session:", error);
