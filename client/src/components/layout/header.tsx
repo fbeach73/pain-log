@@ -75,7 +75,10 @@ export default function Header() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3 3 3-3" />
               </svg>
-              <h1 className="ml-2 text-xl font-semibold">PainClinics.com <span className="text-primary">PainTracker</span></h1>
+              <div className="ml-2 flex flex-col justify-center">
+                <h1 className="text-xl font-semibold">Pain Tracker</h1>
+                <p className="text-[10px] text-gray-600 -mt-1">by PainClinics.com</p>
+              </div>
             </a>
           </Link>
         </div>
