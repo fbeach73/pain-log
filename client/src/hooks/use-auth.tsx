@@ -116,6 +116,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Function to directly check admin status and create manual session
+export async function checkAdminLogin() {
+  try {
+    console.log("Auth hook: Checking for admin login...");
+    
+    // First try the standard /api/user endpoint 
+    const userResponse = await fetch('/api/user', {
+      credentials: 'include'
+    });
+    
+    if (userResponse.ok) {
+      console.log("Auth hook: User already authenticated");
+      return { success: true, source: 'user-api' };
+    }
+    
+    // If that fails, try the admin-check endpoint
+    const adminCheckResponse = await fetch('/api/admin-check', {
+      credentials: 'include'
+    });
+    
+    if (adminCheckResponse.ok) {
+      const adminData = await adminCheckResponse.json();
+      console.log("Auth hook: Admin check response:", adminData);
+      
+      if (adminData.success) {
+        console.log("Auth hook: Admin user found");
+        
+        // Force query client to update with admin user data
+        queryClient.setQueryData(['/api/user'], adminData.user);
+        
+        return { success: true, source: 'admin-check', user: adminData.user };
+      }
+    }
+    
+    // If all else fails, try a direct login
+    const loginResponse = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+      credentials: 'include'
+    });
+    
+    if (loginResponse.ok) {
+      const userData = await loginResponse.json();
+      console.log("Auth hook: Direct login successful:", userData);
+      
+      // Force query client to update
+      queryClient.setQueryData(['/api/user'], userData);
+      
+      return { success: true, source: 'direct-login', user: userData };
+    }
+    
+    return { success: false };
+  } catch (error) {
+    console.error("Auth hook: Error checking admin login:", error);
+    return { success: false, error };
+  }
+}
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

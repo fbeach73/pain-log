@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, checkAdminLogin } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -74,9 +74,82 @@ export default function AuthPage() {
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
   // Function to use backdoor login for testing
-  const useBackdoorLogin = () => {
+  const useBackdoorLogin = async () => {
     console.log("Auth page: Using backdoor login for testing...");
-    window.location.href = "/api/backdoor-login";
+    
+    try {
+      // First check if we can already find the admin
+      console.log("Auth page: Checking for existing admin session...");
+      const adminCheckResponse = await fetch('/api/admin-check', {
+        credentials: 'include'
+      });
+      
+      if (adminCheckResponse.ok) {
+        const adminCheckData = await adminCheckResponse.json();
+        console.log("Auth page: Admin check response:", adminCheckData);
+        
+        if (adminCheckData.success) {
+          console.log("Auth page: Admin user found in session, using that");
+          
+          // Force update the user data in the auth context
+          if (refetchUser) {
+            await refetchUser();
+            console.log("Auth page: User data refetched after admin check");
+          }
+          
+          // Manually redirect to dashboard
+          window.location.href = "/";
+          return;
+        }
+      }
+      
+      // Attempt a direct login with admin credentials through the API
+      console.log("Auth page: Trying direct login with admin credentials...");
+      const loginResponse = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+        credentials: 'include' // Important: include cookies in the request
+      });
+      
+      if (loginResponse.ok) {
+        console.log("Auth page: Direct login successful");
+        const userData = await loginResponse.json();
+        console.log("Auth page: Logged in user data:", userData);
+        
+        // After successful login, check admin status
+        const adminCheckAfterLoginResponse = await fetch('/api/admin-check', {
+          credentials: 'include'
+        });
+        
+        if (adminCheckAfterLoginResponse.ok) {
+          const adminCheckData = await adminCheckAfterLoginResponse.json();
+          console.log("Auth page: Admin check after login:", adminCheckData);
+          
+          if (adminCheckData.success) {
+            // Force update the user data in the auth context
+            if (refetchUser) {
+              await refetchUser();
+              console.log("Auth page: User data refetched after login+admin-check");
+            }
+            
+            // Manually redirect to dashboard
+            window.location.href = "/";
+            return;
+          }
+        }
+      } else {
+        console.log("Auth page: Direct login failed");
+      }
+      
+      // If all else fails, use the backdoor route
+      console.log("Auth page: All direct methods failed, using backdoor login route");
+      window.location.href = "/api/backdoor-login";
+    } catch (error) {
+      console.error("Auth page: Error during login process:", error);
+      // In case of any error, still try the backdoor
+      window.location.href = "/api/backdoor-login";
+    }
   };
 
   // Attempt to recover session on auth page load
@@ -175,6 +248,17 @@ export default function AuthPage() {
                         ) : null}
                         Sign In
                       </Button>
+                      <div className="mt-4 pt-4 border-t text-center">
+                        <p className="text-sm text-muted-foreground mb-2">For testing purposes:</p>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="w-full" 
+                          onClick={useBackdoorLogin}
+                        >
+                          Use Test Account
+                        </Button>
+                      </div>
                     </form>
                   </Form>
                 </CardContent>

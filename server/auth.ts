@@ -282,7 +282,11 @@ export function setupAuth(app: Express) {
 
   // Special backdoor login for testing
   app.get("/api/backdoor-login", (req, res, next) => {
-    console.log("Backdoor login accessed");
+    console.log("Backdoor login accessed", {
+      hasSession: !!req.session,
+      sessionID: req.sessionID,
+      cookies: req.headers.cookie
+    });
     
     // Create temporary admin user
     const adminUser: SelectUser = {
@@ -308,6 +312,14 @@ export function setupAuth(app: Express) {
       preferredResources: []
     };
     
+    // Set a debug cookie to test if cookies work at all
+    res.cookie('debug_cookie', 'test-value', { 
+      maxAge: 3600000, 
+      httpOnly: false,
+      secure: false,
+      sameSite: 'lax' 
+    });
+    
     // Login with admin user
     req.login(adminUser, (err) => {
       if (err) {
@@ -318,6 +330,7 @@ export function setupAuth(app: Express) {
       // Set session flags
       req.session.loggedIn = true;
       req.session.loginTime = new Date().toISOString();
+      req.session.adminId = 999;
       
       // Save session explicitly
       req.session.save((err) => {
@@ -329,11 +342,45 @@ export function setupAuth(app: Express) {
         console.log("Backdoor login successful, session saved:", {
           id: req.sessionID,
           loggedIn: req.session.loggedIn,
-          cookie: req.session.cookie
+          adminId: req.session.adminId,
+          cookie: req.session.cookie,
+          user: req.user ? `${(req.user as any).username} (ID: ${(req.user as any).id})` : "not available"
         });
         
-        // Redirect to home to complete the process
-        res.redirect("/");
+        // Test if user is available through req.user
+        if (req.isAuthenticated()) {
+          console.log("Backdoor login: Authentication successful, user is available");
+        } else {
+          console.log("Backdoor login: Warning - user authenticated but req.isAuthenticated() returns false");
+        }
+        
+        // Return both HTML and data in the response for easier debugging
+        res.send(`
+          <html>
+            <head>
+              <title>Login Successful</title>
+              <script>
+                // Store debug info in sessionStorage
+                sessionStorage.setItem('backdoorLoginTime', '${new Date().toISOString()}');
+                sessionStorage.setItem('backdoorSessionId', '${req.sessionID}');
+                
+                // Log cookies
+                console.log('Cookies after login:', document.cookie);
+                
+                // Redirect after a short delay to allow the session to be established
+                setTimeout(() => {
+                  window.location.href = "/";
+                }, 1000);
+              </script>
+            </head>
+            <body>
+              <h1>Login Successful</h1>
+              <p>Session ID: ${req.sessionID}</p>
+              <p>You will be redirected to the dashboard in 1 second...</p>
+              <p>If you are not redirected, <a href="/">click here</a></p>
+            </body>
+          </html>
+        `);
       });
     });
   });
@@ -391,5 +438,76 @@ export function setupAuth(app: Express) {
     // Don't send password to client
     const { password, ...userWithoutPassword } = req.user as SelectUser;
     res.json(userWithoutPassword);
+  });
+  
+  // Special route to test if we can get admin user directly
+  app.get("/api/admin-check", (req, res) => {
+    console.log("Admin check accessed", {
+      hasSession: !!req.session,
+      sessionID: req.sessionID,
+      cookies: req.headers.cookie,
+      adminId: req.session?.adminId
+    });
+    
+    // Return admin info regardless of authentication status
+    if (req.session?.adminId === 999) {
+      console.log("Admin check: found admin ID in session");
+      
+      // Create admin user data manually
+      const adminUser = {
+        id: 999,
+        username: "admin",
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@example.com",
+        profileCreated: true
+      };
+      
+      return res.json({ 
+        success: true, 
+        user: adminUser,
+        message: "Admin user found via session adminId"
+      });
+    }
+    
+    // Check if authenticated as admin
+    if (req.isAuthenticated() && req.user && (req.user as any).id === 999) {
+      console.log("Admin check: User is authenticated as admin");
+      
+      const { password, ...userWithoutPassword } = req.user as SelectUser;
+      return res.json({ 
+        success: true, 
+        user: userWithoutPassword,
+        message: "User authenticated as admin"
+      });
+    }
+    
+    // Final fallback for session.passport.user
+    if (req.session?.passport?.user === 999) {
+      console.log("Admin check: Found admin ID in passport session");
+      
+      // Create admin user data manually
+      const adminUser = {
+        id: 999,
+        username: "admin",
+        firstName: "Admin",
+        lastName: "User",
+        email: "admin@example.com",
+        profileCreated: true
+      };
+      
+      return res.json({ 
+        success: true, 
+        user: adminUser,
+        message: "Admin user found via passport.user"
+      });
+    }
+    
+    // No admin user found
+    console.log("Admin check: No admin user found in session");
+    res.json({ 
+      success: false, 
+      message: "No admin user found in session"
+    });
   });
 }
