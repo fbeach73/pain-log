@@ -78,71 +78,25 @@ export default function AuthPage() {
     console.log("Auth page: Using backdoor login for testing...");
     
     try {
-      // First check if we can already find the admin
-      console.log("Auth page: Checking for existing admin session...");
-      const adminCheckResponse = await fetch('/api/admin-check', {
-        credentials: 'include'
-      });
+      // Use our centralized admin login helper
+      const result = await checkAdminLogin();
+      console.log("Auth page: Admin login check result:", result);
       
-      if (adminCheckResponse.ok) {
-        const adminCheckData = await adminCheckResponse.json();
-        console.log("Auth page: Admin check response:", adminCheckData);
+      if (result.success) {
+        console.log(`Auth page: Admin login successful via ${result.source}`);
         
-        if (adminCheckData.success) {
-          console.log("Auth page: Admin user found in session, using that");
-          
-          // Force update the user data in the auth context
-          if (refetchUser) {
-            await refetchUser();
-            console.log("Auth page: User data refetched after admin check");
-          }
-          
-          // Manually redirect to dashboard
-          window.location.href = "/";
-          return;
+        // Force update the user data in the auth context
+        if (refetchUser) {
+          await refetchUser();
+          console.log("Auth page: User data refetched after successful admin login");
         }
+        
+        // Manually redirect to dashboard
+        window.location.href = "/";
+        return;
       }
       
-      // Attempt a direct login with admin credentials through the API
-      console.log("Auth page: Trying direct login with admin credentials...");
-      const loginResponse = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'admin', password: 'admin123' }),
-        credentials: 'include' // Important: include cookies in the request
-      });
-      
-      if (loginResponse.ok) {
-        console.log("Auth page: Direct login successful");
-        const userData = await loginResponse.json();
-        console.log("Auth page: Logged in user data:", userData);
-        
-        // After successful login, check admin status
-        const adminCheckAfterLoginResponse = await fetch('/api/admin-check', {
-          credentials: 'include'
-        });
-        
-        if (adminCheckAfterLoginResponse.ok) {
-          const adminCheckData = await adminCheckAfterLoginResponse.json();
-          console.log("Auth page: Admin check after login:", adminCheckData);
-          
-          if (adminCheckData.success) {
-            // Force update the user data in the auth context
-            if (refetchUser) {
-              await refetchUser();
-              console.log("Auth page: User data refetched after login+admin-check");
-            }
-            
-            // Manually redirect to dashboard
-            window.location.href = "/";
-            return;
-          }
-        }
-      } else {
-        console.log("Auth page: Direct login failed");
-      }
-      
-      // If all else fails, use the backdoor route
+      // If the helper function failed, fallback to the backdoor route
       console.log("Auth page: All direct methods failed, using backdoor login route");
       window.location.href = "/api/backdoor-login";
     } catch (error) {
