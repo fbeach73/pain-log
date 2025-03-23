@@ -38,8 +38,8 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: false, // Don't save session if unmodified
-    saveUninitialized: false, // Don't create session until something stored
+    resave: true, // Save session on each request to ensure persistence
+    saveUninitialized: true, // Create session for all requests for better tracking
     store: storage.sessionStore,
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request

@@ -42,6 +42,12 @@ async function makeRequest(endpoint, method = 'GET', body = null) {
     return null;
   }
   
+  // Special case for logout which returns plain text "OK"
+  if (endpoint === '/api/logout' && method === 'POST') {
+    const text = await response.text();
+    return { status: 'success', message: text };
+  }
+  
   return await response.json();
 }
 
@@ -78,7 +84,8 @@ async function runTest() {
       triggers: ['Sitting'],
       notes: 'Test pain entry for persistence verification',
       medicationTaken: true,
-      medications: ['Ibuprofen']
+      medications: ['Ibuprofen'],
+      date: new Date().toISOString() // Add the required date field
     };
     
     const createdEntry = await makeRequest('/api/pain-entries', 'POST', painEntry);
