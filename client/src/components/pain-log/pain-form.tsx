@@ -564,6 +564,76 @@ export default function PainForm() {
                 )}
               />
               
+              {/* Mood Tracking */}
+              <div>
+                <FormLabel className="block text-sm font-medium text-slate-700 mb-2">
+                  How are you feeling emotionally?
+                </FormLabel>
+                
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="mood"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-slate-500">Mood</FormLabel>
+                        <FormControl>
+                          <Select 
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select your mood" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="happy">😊 Happy</SelectItem>
+                              <SelectItem value="calm">😌 Calm</SelectItem>
+                              <SelectItem value="anxious">😟 Anxious</SelectItem>
+                              <SelectItem value="sad">😔 Sad</SelectItem>
+                              <SelectItem value="frustrated">😤 Frustrated</SelectItem>
+                              <SelectItem value="angry">😠 Angry</SelectItem>
+                              <SelectItem value="depressed">😞 Depressed</SelectItem>
+                              <SelectItem value="hopeful">🙂 Hopeful</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="moodRating"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-slate-500">
+                          Mood Intensity (1-5)
+                        </FormLabel>
+                        <FormControl>
+                          <Slider
+                            min={1}
+                            max={5}
+                            step={1}
+                            value={[field.value || 3]}
+                            onValueChange={(vals) => field.onChange(vals[0])}
+                            className="[&_.slider-thumb_]:h-6 [&_.slider-thumb_]:w-6 [&_.slider-thumb_]:border-2 [&_.slider-thumb_]:border-primary-500 [&_.slider-track_]:h-2 [&_.slider-track_]:bg-gradient-to-r [&_.slider-track_]:from-blue-300 [&_.slider-track_]:to-blue-600"
+                          />
+                        </FormControl>
+                        <div className="flex justify-between text-xs text-slate-500 mt-2">
+                          <span>Very Mild</span>
+                          <span>Mild</span>
+                          <span>Moderate</span>
+                          <span>Strong</span>
+                          <span>Very Strong</span>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
               {/* Submit Buttons */}
               <div className="flex gap-4">
                 <Button 
