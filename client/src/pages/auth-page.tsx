@@ -73,6 +73,12 @@ export default function AuthPage() {
     }
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
+  // Function to use backdoor login for testing
+  const useBackdoorLogin = () => {
+    console.log("Auth page: Using backdoor login for testing...");
+    window.location.href = "/api/backdoor-login";
+  };
+
   // Attempt to recover session on auth page load
   useEffect(() => {
     // Only try to recover session if we have no user yet and we're not currently loading
@@ -85,13 +91,8 @@ export default function AuthPage() {
           console.log("Auth page: Session recovered successfully");
         } else {
           console.log("Auth page: No active session found");
-          
-          // Auto-login with admin credentials for testing
-          console.log("Auth page: Auto-logging in with admin credentials for testing");
-          loginMutation.mutate({
-            username: "admin",
-            password: "admin123"
-          });
+          // Session recovery failed, but we won't auto-login anymore
+          // User will need to click the dedicated button
         }
       }).catch(error => {
         console.error("Auth page: Failed to recover session:", error);

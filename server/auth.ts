@@ -49,18 +49,19 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: false, // Only save session when modified
-    saveUninitialized: false, // Don't create session until something stored
+    resave: true, // Save session on every request to ensure it persists
+    saveUninitialized: true, // Create session before anything is stored (for better compatibility)
     store: storage.sessionStore,
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
-      secure: isProd, // Secure in production, not in development
+      secure: false, // Never use secure in development (needed for http->https)
       sameSite: "lax", // Standard cookie same-site policy
-      httpOnly: true, // The cookie cannot be accessed via JavaScript
-      path: '/'
+      httpOnly: false, // Allow JavaScript access for debugging
+      path: '/',
+      domain: undefined // Auto-detect domain
     }
   };
 
@@ -276,6 +277,64 @@ export function setupAuth(app: Express) {
     req.logout((err) => {
       if (err) return next(err);
       res.sendStatus(200);
+    });
+  });
+
+  // Special backdoor login for testing
+  app.get("/api/backdoor-login", (req, res, next) => {
+    console.log("Backdoor login accessed");
+    
+    // Create temporary admin user
+    const adminUser: SelectUser = {
+      id: 999,
+      username: "admin",
+      password: "hashed-password-not-used",
+      firstName: "Admin",
+      lastName: "User",
+      email: "admin@example.com",
+      profileCreated: true,
+      medicalHistory: [],
+      painBackground: null,
+      age: 30,
+      gender: "Not specified",
+      height: null,
+      weight: null,
+      allergies: [],
+      currentMedications: [],
+      chronicConditions: [],
+      activityLevel: null,
+      occupation: null,
+      primaryDoctor: null,
+      preferredResources: []
+    };
+    
+    // Login with admin user
+    req.login(adminUser, (err) => {
+      if (err) {
+        console.error("Backdoor login error:", err);
+        return next(err);
+      }
+      
+      // Set session flags
+      req.session.loggedIn = true;
+      req.session.loginTime = new Date().toISOString();
+      
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Backdoor session save error:", err);
+          return next(err);
+        }
+        
+        console.log("Backdoor login successful, session saved:", {
+          id: req.sessionID,
+          loggedIn: req.session.loggedIn,
+          cookie: req.session.cookie
+        });
+        
+        // Redirect to home to complete the process
+        res.redirect("/");
+      });
     });
   });
 
