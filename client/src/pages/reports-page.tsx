@@ -47,13 +47,48 @@ export default function ReportsPage() {
   
   const handleGenerateReport = () => {
     setIsGenerating(true);
-    setTimeout(() => {
+    
+    let reportId;
+    
+    // Map the report type to an appropriate report ID for the API
+    switch(reportType) {
+      case 'daily':
+        reportId = 'last-day';
+        break;
+      case 'weekly':
+        reportId = 'last-week';
+        break;
+      case 'monthly':
+        reportId = 'last-month';
+        break;
+      case 'custom':
+        // For custom dates, we'd need a different approach
+        // This is simplified for now
+        reportId = 'custom-range';
+        break;
+      default:
+        reportId = 'last-week';
+    }
+    
+    // Trigger the PDF download using the appropriate report ID
+    try {
+      const downloadUrl = `/api/reports/${reportId}/download`;
+      window.open(downloadUrl, '_blank');
+      
       setIsGenerating(false);
       toast({
         title: "Report Generated",
-        description: "Your pain report has been generated successfully.",
+        description: "Your pain report has been generated and is downloading.",
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      setIsGenerating(false);
+      toast({
+        title: "Report Generation Failed",
+        description: "There was a problem generating your report. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleShareReport = (reportId: string) => {
@@ -65,11 +100,25 @@ export default function ReportsPage() {
   };
   
   const handleDownloadReport = (reportId: string) => {
-    // In a production app, this would trigger a real download
-    toast({
-      title: "Download Started",
-      description: "Your report is being downloaded as a PDF.",
-    });
+    try {
+      // Create a temporary link and trigger the download
+      const downloadUrl = `/api/reports/${reportId}/download`;
+      
+      // Open in a new tab so it doesn't interrupt the current session
+      window.open(downloadUrl, '_blank');
+      
+      toast({
+        title: "Download Started",
+        description: "Your report is being downloaded as a PDF.",
+      });
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      toast({
+        title: "Download Failed",
+        description: "There was a problem downloading your report. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handlePrintReport = (reportId: string) => {

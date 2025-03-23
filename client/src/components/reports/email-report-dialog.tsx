@@ -61,16 +61,45 @@ export default function EmailReportDialog({
   const onSubmit = async (values: EmailFormValues) => {
     setIsSending(true);
     
-    // In a production app, this would call an API endpoint to send the email
-    // For now, we'll simulate sending with a timeout
-    setTimeout(() => {
+    try {
+      // Call the API endpoint to send the email with attached PDF report
+      const response = await fetch(`/api/reports/${reportId}/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: values.recipient 
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
       setIsSending(false);
       toast({
         title: "Email Sent",
         description: `Report has been sent to ${values.recipient}`,
       });
+      
+      // If testing with Ethereal, open the preview URL
+      if (data.previewUrl) {
+        window.open(data.previewUrl, '_blank');
+      }
+      
       onClose();
-    }, 1500);
+    } catch (error) {
+      console.error("Error sending email:", error);
+      setIsSending(false);
+      toast({
+        title: "Email Failed",
+        description: "There was a problem sending your email. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

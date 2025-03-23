@@ -292,6 +292,228 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update reminder settings" });
     }
   });
+  
+  // PDF report download endpoint
+  app.get("/api/reports/:reportId/download", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      const { reportId } = req.params;
+      
+      // Get user data
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).send("User ID not found");
+      }
+
+      // Fetch pain entries for the user
+      const painEntries = await storage.getPainEntriesByUserId(userId);
+      if (!painEntries || painEntries.length === 0) {
+        return res.status(404).send("No pain entries found for this user");
+      }
+
+      // Get user's name
+      const user = await storage.getUser(userId);
+      const userName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || "User";
+
+      // Calculate report date range
+      const now = new Date();
+      let periodStart: string;
+      let periodEnd: string;
+
+      // Set different date ranges based on reportId
+      if (reportId === 'last-week') {
+        periodStart = format(subDays(now, 7), 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+      } else if (reportId === 'last-month') {
+        periodStart = format(subDays(now, 30), 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+      } else if (reportId === 'last-3-months') {
+        periodStart = format(subDays(now, 90), 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+      } else if (reportId === 'all-time') {
+        // Find earliest entry date
+        const dates = painEntries.map(e => new Date(e.date).getTime());
+        const earliestDate = new Date(Math.min(...dates));
+        periodStart = format(earliestDate, 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+      } else {
+        // Default to all time if report ID doesn't match
+        const dates = painEntries.map(e => new Date(e.date).getTime());
+        const earliestDate = new Date(Math.min(...dates));
+        periodStart = format(earliestDate, 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+      }
+
+      // Filter entries based on date range
+      const startDate = new Date(periodStart);
+      const endDate = new Date(periodEnd);
+      endDate.setHours(23, 59, 59, 999); // Include the entire end day
+
+      const filteredEntries = painEntries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= startDate && entryDate <= endDate;
+      });
+
+      if (filteredEntries.length === 0) {
+        return res.status(404).send("No pain entries found for the selected time period");
+      }
+
+      // Generate PDF
+      const pdfBuffer = await generatePainLogPDF(
+        filteredEntries,
+        userName,
+        format(startDate, 'MMMM d, yyyy'),
+        format(endDate, 'MMMM d, yyyy')
+      );
+
+      // Set response headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=pain-log-report-${reportId}.pdf`);
+      
+      // Send the PDF
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating PDF report:", error);
+      res.status(500).send("Error generating report");
+    }
+  });
+
+  // Email report endpoint
+  app.post("/api/reports/:reportId/email", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      const { reportId } = req.params;
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).send("Email address is required");
+      }
+
+      // Get user data
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).send("User ID not found");
+      }
+
+      // Fetch pain entries for the user
+      const painEntries = await storage.getPainEntriesByUserId(userId);
+      if (!painEntries || painEntries.length === 0) {
+        return res.status(404).send("No pain entries found for this user");
+      }
+
+      // Get user's name
+      const user = await storage.getUser(userId);
+      const userName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.username || "User";
+
+      // Calculate report date range
+      const now = new Date();
+      let periodStart: string;
+      let periodEnd: string;
+      let periodName: string;
+
+      // Set different date ranges based on reportId
+      if (reportId === 'last-week') {
+        periodStart = format(subDays(now, 7), 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+        periodName = "Last Week";
+      } else if (reportId === 'last-month') {
+        periodStart = format(subDays(now, 30), 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+        periodName = "Last Month";
+      } else if (reportId === 'last-3-months') {
+        periodStart = format(subDays(now, 90), 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+        periodName = "Last 3 Months";
+      } else if (reportId === 'all-time') {
+        // Find earliest entry date
+        const dates = painEntries.map(e => new Date(e.date).getTime());
+        const earliestDate = new Date(Math.min(...dates));
+        periodStart = format(earliestDate, 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+        periodName = "All Time";
+      } else {
+        // Default to all time if report ID doesn't match
+        const dates = painEntries.map(e => new Date(e.date).getTime());
+        const earliestDate = new Date(Math.min(...dates));
+        periodStart = format(earliestDate, 'yyyy-MM-dd');
+        periodEnd = format(now, 'yyyy-MM-dd');
+        periodName = "All Time";
+      }
+
+      // Filter entries based on date range
+      const startDate = new Date(periodStart);
+      const endDate = new Date(periodEnd);
+      endDate.setHours(23, 59, 59, 999); // Include the entire end day
+
+      const filteredEntries = painEntries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= startDate && entryDate <= endDate;
+      });
+
+      if (filteredEntries.length === 0) {
+        return res.status(404).send("No pain entries found for the selected time period");
+      }
+
+      // Generate PDF
+      const pdfBuffer = await generatePainLogPDF(
+        filteredEntries,
+        userName,
+        format(startDate, 'MMMM d, yyyy'),
+        format(endDate, 'MMMM d, yyyy')
+      );
+
+      // Prepare email content
+      const subject = `Your Pain Log Report - ${periodName}`;
+      const text = `
+        Hello ${userName},
+
+        Attached is your pain log report for ${periodName} (${format(startDate, 'MMMM d, yyyy')} to ${format(endDate, 'MMMM d, yyyy')}).
+
+        Thank you for using PainTracker by PainClinics.com.
+      `;
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #0047AB;">Your Pain Log Report - ${periodName}</h2>
+          <p>Hello ${userName},</p>
+          <p>Attached is your pain log report for <strong>${periodName}</strong> (${format(startDate, 'MMMM d, yyyy')} to ${format(endDate, 'MMMM d, yyyy')}).</p>
+          <p>The report includes a summary of your pain entries during this period, including statistics and detailed entries.</p>
+          <p>If you have any questions about your report, please contact your healthcare provider.</p>
+          <p>Thank you for using PainTracker by PainClinics.com.</p>
+          <hr style="border: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #888;">This is an automated email. Please do not reply to this message.</p>
+        </div>
+      `;
+
+      // Send email with attachment
+      const emailResult = await sendEmailWithAttachment(
+        email,
+        subject,
+        text,
+        html,
+        pdfBuffer,
+        `pain-log-report-${reportId}.pdf`
+      );
+
+      if (emailResult.success) {
+        res.status(200).json({ 
+          message: "Report sent successfully", 
+          previewUrl: emailResult.previewUrl 
+        });
+      } else {
+        throw new Error(emailResult.error || "Unknown error sending email");
+      }
+      
+    } catch (error) {
+      console.error("Error emailing PDF report:", error);
+      res.status(500).send("Error emailing report");
+    }
+  });
 
   const httpServer = createServer(app);
 

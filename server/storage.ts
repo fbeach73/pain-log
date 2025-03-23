@@ -156,6 +156,7 @@ export class PostgresStorage implements IStorage {
         this.sessionStore = new pgSession({
           pool: this.pool,
           tableName: 'user_sessions',
+          createTableIfMissing: true, // Automatically create the sessions table if it doesn't exist
           // Make the session store more resilient to connection issues
           errorLog: (error) => console.error('Session store error:', error)
         });
