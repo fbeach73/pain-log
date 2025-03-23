@@ -1330,83 +1330,66 @@ class MemStorage implements IStorage {
   }
   
   async getReminderSettings(userId: number): Promise<ReminderSetting | undefined> {
-    return this.withFallback(
-      // PostgreSQL operation
-      async () => {
-        try {
-          const result = await this.db.select()
-            .from(reminderSettings)
-            .where(eq(reminderSettings.userId, userId))
-            .limit(1);
-          
-          if (result && result.length > 0) {
-            return result[0];
-          } else {
-            // Create default settings if none exist
-            const defaults: InsertReminderSetting = {
-              userId,
-              emailNotifications: true,
-              painLogReminders: true,
-              medicationReminders: true,
-              wellnessReminders: true,
-              weeklySummary: true,
-              reminderFrequency: "daily",
-              preferredTime: "evening",
-              notificationStyle: "gentle"
-            };
-            
-            const newSettings = await this.db.insert(reminderSettings)
-              .values(defaults)
-              .returning();
-              
-            return newSettings[0];
-          }
-        } catch (error) {
-          console.error('Error getting reminder settings from database:', error);
-          throw error;
-        }
-      },
-      // In-memory fallback operation
-      async () => this.memFallback.getReminderSettings(userId),
-      'Error getting reminder settings'
-    );
+    try {
+      // Get existing settings from the Map
+      let settings = this.reminderSettings.get(userId);
+      
+      // If no settings exist, create default settings
+      if (!settings) {
+        const defaults: InsertReminderSetting = {
+          userId,
+          emailNotifications: true,
+          painLogReminders: true,
+          medicationReminders: true,
+          wellnessReminders: true,
+          weeklySummary: true,
+          reminderFrequency: "daily",
+          preferredTime: "evening",
+          notificationStyle: "gentle"
+        };
+        
+        // Create a new settings object with defaults and an auto-generated ID
+        settings = {
+          id: 1, // In memory, we can use a simple ID since it's just for this user
+          ...defaults,
+          lastUpdated: new Date()
+        };
+        
+        // Store in the map
+        this.reminderSettings.set(userId, settings);
+      }
+      
+      return settings;
+    } catch (error) {
+      console.error('Error getting reminder settings:', error);
+      return undefined;
+    }
   }
   
   async updateReminderSettings(userId: number, settings: Partial<ReminderSetting>): Promise<ReminderSetting> {
-    return this.withFallback(
-      // PostgreSQL operation
-      async () => {
-        try {
-          // Check if settings exist first
-          const existing = await this.getReminderSettings(userId);
-          
-          if (!existing) {
-            throw new Error('Reminder settings not found for user');
-          }
-          
-          // Update the settings
-          const result = await this.db.update(reminderSettings)
-            .set({
-              ...settings,
-              lastUpdated: new Date()
-            })
-            .where(eq(reminderSettings.userId, userId))
-            .returning();
-          
-          if (!result || result.length === 0) {
-            throw new Error('Failed to update reminder settings');
-          }
-          
-          return result[0];
-        } catch (error) {
-          console.error('Error updating reminder settings in database:', error);
-          throw error;
-        }
-      },
-      // In-memory fallback operation
-      async () => this.memFallback.updateReminderSettings(userId, settings),
-      'Error updating reminder settings'
-    );
+    try {
+      // First get the existing settings or create defaults
+      const existing = await this.getReminderSettings(userId);
+      
+      if (!existing) {
+        throw new Error('Reminder settings not found for user');
+      }
+      
+      // Update the settings
+      const updatedSettings: ReminderSetting = {
+        ...existing,
+        ...settings,
+        lastUpdated: new Date()
+      };
+      
+      // Store the updated settings
+      this.reminderSettings.set(userId, updatedSettings);
+      
+      return updatedSettings;
+    } catch (error) {
+      console.error('Error updating reminder settings:', error);
+      throw error;
+    }
   }
 }
 
