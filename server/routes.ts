@@ -259,6 +259,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update user profile" });
     }
   });
+  
+  // Reminder Settings API
+  app.get("/api/user/reminder-settings", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+      
+      const userId = req.user!.id;
+      const reminderSettings = await storage.getReminderSettings(userId);
+      res.json(reminderSettings);
+    } catch (error) {
+      console.error("Error fetching reminder settings:", error);
+      res.status(500).json({ message: "Failed to fetch reminder settings" });
+    }
+  });
+  
+  app.patch("/api/user/reminder-settings", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+      
+      const userId = req.user!.id;
+      const settingsData = req.body;
+      const updatedSettings = await storage.updateReminderSettings(userId, settingsData);
+      res.json(updatedSettings);
+    } catch (error) {
+      console.error("Error updating reminder settings:", error);
+      res.status(500).json({ message: "Failed to update reminder settings" });
+    }
+  });
 
   const httpServer = createServer(app);
 

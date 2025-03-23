@@ -65,20 +65,22 @@ export default function ProfilePage() {
   // Fetch reminder settings
   const { data: reminderSettings } = useQuery({
     queryKey: ["/api/user/reminder-settings"],
-    enabled: !!user,
-    onSuccess: (data) => {
-      if (data) {
-        setEmailNotifications(data.emailNotifications ?? true);
-        setPainLogReminders(data.painLogReminders ?? true);
-        setMedicationReminders(data.medicationReminders ?? true);
-        setWellnessReminders(data.wellnessReminders ?? true);
-        setWeeklySummary(data.weeklySummary ?? true);
-        setReminderFrequency(data.reminderFrequency ?? "daily");
-        setPreferredTime(data.preferredTime ?? "evening");
-        setNotificationStyle(data.notificationStyle ?? "gentle");
-      }
-    }
+    enabled: !!user
   });
+  
+  // Apply reminder settings when data is loaded
+  useEffect(() => {
+    if (reminderSettings) {
+      setEmailNotifications(reminderSettings.emailNotifications ?? true);
+      setPainLogReminders(reminderSettings.painLogReminders ?? true);
+      setMedicationReminders(reminderSettings.medicationReminders ?? true);
+      setWellnessReminders(reminderSettings.wellnessReminders ?? true);
+      setWeeklySummary(reminderSettings.weeklySummary ?? true);
+      setReminderFrequency(reminderSettings.reminderFrequency ?? "daily");
+      setPreferredTime(reminderSettings.preferredTime ?? "evening");
+      setNotificationStyle(reminderSettings.notificationStyle ?? "gentle");
+    }
+  }, [reminderSettings]);
   
   const saveRemindersMutation = useMutation({
     mutationFn: async (reminderSettings: any) => {

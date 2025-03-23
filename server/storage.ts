@@ -988,6 +988,39 @@ class MemStorage implements IStorage {
     };
     this.reports.set(sampleReport.id, sampleReport);
   }
+  
+  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
+    const settings = this.reminderSettings.get(userId);
+    
+    if (!settings) {
+      // Return default settings if none exist
+      return {
+        userId,
+        emailNotifications: true,
+        painLogReminders: true,
+        medicationReminders: true,
+        wellnessReminders: true,
+        weeklySummary: true,
+        reminderFrequency: "daily",
+        preferredTime: "evening",
+        notificationStyle: "gentle"
+      };
+    }
+    
+    return settings;
+  }
+  
+  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
+    const existingSettings = await this.getReminderSettings(userId);
+    const updatedSettings: ReminderSettings = {
+      ...existingSettings!,
+      ...settings,
+      userId
+    };
+    
+    this.reminderSettings.set(userId, updatedSettings);
+    return updatedSettings;
+  }
 }
 
 export const storage = new MemStorage();
