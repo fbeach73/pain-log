@@ -133,6 +133,12 @@ export class PostgresStorage implements IStorage {
       });
       this.db = drizzle(this.pool);
       
+      // Add error handler for the connection pool
+      this.pool.on('error', (err) => {
+        console.error('Unexpected PostgreSQL pool error:', err);
+        // Don't mark as failed here - we'll try to recover
+      });
+      
       // Test the connection but don't throw an error if it fails
       // This allows the app to use PostgreSQL when it's working but gracefully handle failures
       this.pool.query('SELECT 1')
@@ -140,9 +146,20 @@ export class PostgresStorage implements IStorage {
           console.log('Successfully connected to PostgreSQL database');
           this.connectionFailed = false;
         })
-        .catch(err => {
+        .catch((err) => {
           console.error('Warning: PostgreSQL connection test failed:', err);
           this.connectionFailed = true;
+          // Try again after a delay
+          setTimeout(() => {
+            this.pool.query('SELECT 1')
+              .then(() => {
+                console.log('PostgreSQL connection recovered');
+                this.connectionFailed = false;
+              })
+              .catch((retryErr) => {
+                console.error('PostgreSQL connection retry failed:', retryErr);
+              });
+          }, 5000);
         });
       
       // Use PostgreSQL for session storage with fallback to memory store
@@ -1398,6 +1415,10 @@ class StorageWrapper implements IStorage {
   private pgStorage: PostgresStorage | null = null;
   private memStorage: MemStorage;
   private useMemory: boolean = false;
+  private persistentStorageInitialized: boolean = false;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 5;
   sessionStore: any;
 
   constructor() {
@@ -1423,9 +1444,12 @@ class StorageWrapper implements IStorage {
       // Test the connection immediately but don't block initialization
       this.testConnection();
     } catch (error) {
-      console.error('Failed to initialize PostgreSQL storage, falling back to memory storage:', error);
+      console.error('Failed to initialize PostgreSQL storage, using memory storage temporarily:', error);
       this.useMemory = true;
       this.pgStorage = null;
+      
+      // Schedule a reconnection attempt
+      this.scheduleReconnect();
     }
   }
   
@@ -1436,21 +1460,96 @@ class StorageWrapper implements IStorage {
     try {
       // Simple query to test if the database is accessible
       const result = await this.pgStorage.testConnection();
-      this.useMemory = !result;
+      
       if (result) {
         console.log('PostgreSQL connection test successful, using database storage');
+        this.useMemory = false;
+        this.persistentStorageInitialized = true;
+        this.reconnectAttempts = 0;
+        
+        // If we were previously using memory storage, sync any new data to the database
+        if (this.useMemory) {
+          // In a production app, we would implement data synchronization here
+          console.log('Database connection restored - ready for persistent storage');
+        }
+        
       } else {
-        console.error('PostgreSQL connection test failed, using memory storage');
+        console.error('PostgreSQL connection test failed, using memory storage temporarily');
+        this.useMemory = true;
+        this.scheduleReconnect();
       }
     } catch (error) {
-      console.error('PostgreSQL connection test failed, using memory storage:', error);
+      console.error('PostgreSQL connection test failed, using memory storage temporarily:', error);
       this.useMemory = true;
+      this.scheduleReconnect();
     }
   }
   
+  // Schedule a reconnection attempt with increasing backoff
+  private scheduleReconnect() {
+    // Clear any existing timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+    
+    // Only try to reconnect if we haven't exceeded max attempts
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      console.error(`Failed to connect to PostgreSQL after ${this.MAX_RECONNECT_ATTEMPTS} attempts. Will continue with memory storage.`);
+      console.warn('WARNING: Data will not be persisted across redeployments in memory-only mode.');
+      return;
+    }
+    
+    // Calculate backoff time (exponential backoff with jitter)
+    const baseDelay = 1000; // 1 second
+    const maxDelay = 30000; // 30 seconds
+    const backoff = Math.min(maxDelay, baseDelay * Math.pow(2, this.reconnectAttempts));
+    const jitter = Math.random() * 0.3 * backoff; // Add up to 30% jitter
+    const delay = backoff + jitter;
+    
+    this.reconnectAttempts++;
+    
+    console.log(`Scheduling PostgreSQL reconnection attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS} in ${Math.round(delay/1000)} seconds...`);
+    
+    this.reconnectTimer = setTimeout(() => {
+      console.log(`Attempting to reconnect to PostgreSQL (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`);
+      
+      // If the connection was initially failed, try to initialize PostgreSQL again
+      if (!this.pgStorage) {
+        try {
+          this.pgStorage = new PostgresStorage();
+          this.sessionStore = this.pgStorage.sessionStore;
+        } catch (error) {
+          console.error('Failed to reinitialize PostgreSQL connection:', error);
+          this.pgStorage = null;
+          this.scheduleReconnect();
+          return;
+        }
+      }
+      
+      // Test the connection
+      this.testConnection();
+    }, delay);
+  }
+  
   // Helper to route method calls to the appropriate storage implementation
+  // Always tries to use the PostgreSQL storage if it's available, even if previous operations failed
   private getStorage(): IStorage {
-    return (this.useMemory || !this.pgStorage) ? this.memStorage : this.pgStorage;
+    // If we don't have a pgStorage instance at all, use memory
+    if (!this.pgStorage) {
+      return this.memStorage;
+    }
+    
+    // If we're actively using memory mode due to connection issues
+    if (this.useMemory) {
+      // Try to reconnect to PostgreSQL periodically
+      if (!this.reconnectTimer && this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+        this.scheduleReconnect();
+      }
+      return this.memStorage;
+    }
+    
+    // Use PostgreSQL storage
+    return this.pgStorage;
   }
   
   // Implement all IStorage methods by delegating to the appropriate storage implementation
