@@ -7,6 +7,17 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
+// Extend the session type to include our custom properties
+declare module 'express-session' {
+  interface SessionData {
+    loggedIn?: boolean;
+    loginTime?: string;
+    passport?: {
+      user?: number; // User ID stored by passport
+    };
+  }
+}
+
 declare global {
   namespace Express {
     interface User extends SelectUser {}
@@ -38,15 +49,15 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: true, // Save session on each request to ensure persistence
-    saveUninitialized: true, // Create session for all requests for better tracking
+    resave: false, // Only save session when modified
+    saveUninitialized: false, // Don't create session until something stored
     store: storage.sessionStore,
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
-      secure: false, // Don't require HTTPS (use true in production with HTTPS)
+      secure: isProd, // Secure in production, not in development
       sameSite: "lax", // Standard cookie same-site policy
       httpOnly: true, // The cookie cannot be accessed via JavaScript
       path: '/'
@@ -140,7 +151,7 @@ export function setupAuth(app: Express) {
   app.post("/api/login", (req, res, next) => {
     console.log("Login attempt for username:", req.body.username);
     
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: Error | null, user: any, info: any) => {
       if (err) {
         console.error("Login error:", err);
         return next(err);
@@ -153,7 +164,17 @@ export function setupAuth(app: Express) {
       
       console.log("Credentials valid for user:", user.username);
       
-      // Simple login without session regeneration which was causing issues
+      // Log the session before login
+      console.log("Session before login:", {
+        id: req.sessionID,
+        cookie: req.session?.cookie
+      });
+      
+      // Set a flag in the session to help troubleshoot
+      req.session.loggedIn = true;
+      req.session.loginTime = new Date().toISOString();
+      
+      // Login the user
       req.login(user, (err) => {
         if (err) {
           console.error("Session login error:", err);
@@ -162,7 +183,7 @@ export function setupAuth(app: Express) {
         
         console.log("User logged in to session, saving session...");
         
-        // Save session explicitly
+        // Save session explicitly and ensure it persists
         req.session.save((err) => {
           if (err) {
             console.error("Session save error:", err);
@@ -172,7 +193,10 @@ export function setupAuth(app: Express) {
           // Debug session data
           console.log("Session saved successfully:", {
             id: req.sessionID,
+            loggedIn: req.session.loggedIn,
+            loginTime: req.session.loginTime,
             cookie: req.session.cookie,
+            user: user.id
           });
           
           // Don't send password to client
@@ -191,18 +215,43 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     // Debug session information
     console.log("GET /api/user - Request received:", {
       isAuthenticated: req.isAuthenticated(),
       hasUserObject: !!req.user,
       sessionID: req.sessionID,
       sessionCookie: req.session?.cookie,
+      loggedIn: req.session?.loggedIn,
+      loginTime: req.session?.loginTime,
       user: req.user ? `${(req.user as any).username} (ID: ${(req.user as any).id})` : "not available"
     });
 
     // Check for authenticated session
     if (!req.isAuthenticated() || !req.user) {
+      // Additional debugging - check if session exists but user isn't loaded properly
+      if (req.session?.loggedIn) {
+        console.log("GET /api/user - Session exists but user not authenticated properly");
+        
+        // Try to recover the user from the session if possible
+        if (req.session.passport?.user) {
+          const userId = req.session.passport.user;
+          console.log(`GET /api/user - Attempting to recover user ID ${userId} from session`);
+          
+          try {
+            const user = await storage.getUser(userId);
+            if (user) {
+              console.log(`GET /api/user - Successfully recovered user ${user.username} (ID: ${user.id})`);
+              // Don't send password to client
+              const { password, ...userWithoutPassword } = user;
+              return res.json(userWithoutPassword);
+            }
+          } catch (error) {
+            console.error("GET /api/user - Error recovering user:", error);
+          }
+        }
+      }
+      
       console.log("GET /api/user - User not authenticated, returning 401");
       return res.sendStatus(401);
     }
