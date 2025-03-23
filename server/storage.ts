@@ -239,15 +239,16 @@ export class PostgresStorage implements IStorage {
   // PAIN ENTRIES
   async createPainEntry(entry: InsertPainEntry): Promise<PainEntry> {
     try {
+      // Match field names exactly as defined in the schema
       const result = await this.db.insert(painEntries).values({
-        userId: entry.userId,
+        user_id: entry.userId,
         date: entry.date || new Date(),
         intensity: entry.intensity,
         locations: entry.locations || [],
         characteristics: entry.characteristics || null,
         triggers: entry.triggers || null,
         notes: entry.notes || null,
-        medicationTaken: entry.medicationTaken || false,
+        medication_taken: entry.medicationTaken || false,
         medications: entry.medications || null
       }).returning();
       
@@ -266,7 +267,7 @@ export class PostgresStorage implements IStorage {
     try {
       const result = await this.db.select()
         .from(painEntries)
-        .where(eq(painEntries.userId, userId))
+        .where(eq(painEntries.user_id, userId))
         .orderBy(desc(painEntries.date));
       
       return result;
@@ -280,7 +281,7 @@ export class PostgresStorage implements IStorage {
     try {
       const result = await this.db.select()
         .from(painEntries)
-        .where(eq(painEntries.userId, userId))
+        .where(eq(painEntries.user_id, userId))
         .orderBy(desc(painEntries.date))
         .limit(limit);
       
@@ -300,7 +301,7 @@ export class PostgresStorage implements IStorage {
         .from(painEntries)
         .where(
           and(
-            eq(painEntries.userId, userId),
+            eq(painEntries.user_id, userId),
             sql`${painEntries.date} >= ${cutoffDate}`
           )
         )
@@ -431,11 +432,11 @@ export class PostgresStorage implements IStorage {
   async createMedication(medication: InsertMedication): Promise<Medication> {
     try {
       const result = await this.db.insert(medications).values({
-        userId: medication.userId,
+        user_id: medication.userId,
         name: medication.name,
         dosage: medication.dosage || null,
         frequency: medication.frequency || null,
-        timeOfDay: medication.timeOfDay || null,
+        time_of_day: medication.timeOfDay || null,
         active: medication.active !== undefined ? medication.active : true
       }).returning();
       
@@ -456,7 +457,7 @@ export class PostgresStorage implements IStorage {
         .from(medications)
         .where(
           and(
-            eq(medications.userId, userId),
+            eq(medications.user_id, userId),
             eq(medications.active, true)
           )
         );
