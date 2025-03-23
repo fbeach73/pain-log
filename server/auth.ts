@@ -29,8 +29,8 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Set a secure secret or use environment variable
-  const sessionSecret = process.env.SESSION_SECRET || "paintrack-session-secret";
+  // Set a consistent secret - don't change this on redeployments or users will lose sessions
+  const sessionSecret = process.env.SESSION_SECRET || "paintrack-persistent-session-secret-7ad3";
   
   // Determine if we're in production or development
   const isProd = process.env.NODE_ENV === 'production';
@@ -38,17 +38,17 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: true, // Always save session regardless of modifications
-    saveUninitialized: false, // Don't save uninitialized sessions
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something stored
     store: storage.sessionStore,
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
-      secure: isProd, // Only use secure cookies in production
-      sameSite: isProd ? "none" : "lax", // Needed for cross-site in production
-      httpOnly: true,
+      secure: false, // Don't require HTTPS (use true in production with HTTPS)
+      sameSite: "lax", // Standard cookie same-site policy
+      httpOnly: true, // The cookie cannot be accessed via JavaScript
       path: '/'
     }
   };

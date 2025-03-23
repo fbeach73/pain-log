@@ -152,13 +152,27 @@ export class PostgresStorage implements IStorage {
       
       // Use PostgreSQL for session storage with fallback to memory store
       try {
+        // First, ensure the session table exists
+        this.pool.query(`
+          CREATE TABLE IF NOT EXISTS "user_sessions" (
+            "sid" varchar NOT NULL COLLATE "default",
+            "sess" json NOT NULL,
+            "expire" timestamp(6) NOT NULL,
+            CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
+          );
+          CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire" ON "user_sessions" ("expire");
+        `)
+        .then(() => console.log('Session table check/creation completed'))
+        .catch(err => console.error('Error checking/creating session table:', err));
+        
         const pgSession = ConnectPgSimple(session);
         this.sessionStore = new pgSession({
           pool: this.pool,
           tableName: 'user_sessions',
-          createTableIfMissing: true, // Automatically create the sessions table if it doesn't exist
+          // Setting createTableIfMissing doesn't work reliably, so we create the table manually above
           // Make the session store more resilient to connection issues
-          errorLog: (error) => console.error('Session store error:', error)
+          errorLog: (error) => console.error('Session store error:', error),
+          pruneSessionInterval: 60 // Prune expired sessions every 60 seconds
         });
       } catch (err) {
         console.error('Session store initialization failed, using memory store instead:', err);
