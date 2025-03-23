@@ -239,33 +239,30 @@ export default function PainForm() {
   };
 
   const toggleLocation = (location: string) => {
-    if (selectedLocations.includes(location)) {
-      setSelectedLocations(selectedLocations.filter(loc => loc !== location));
-    } else {
-      setSelectedLocations([...selectedLocations, location]);
-    }
+    const updatedLocations = selectedLocations.includes(location)
+      ? selectedLocations.filter(loc => loc !== location)
+      : [...selectedLocations, location];
     
-    form.setValue("locations", selectedLocations);
+    setSelectedLocations(updatedLocations);
+    form.setValue("locations", updatedLocations);
   };
 
   const toggleCharacteristic = (characteristic: string) => {
-    if (selectedCharacteristics.includes(characteristic)) {
-      setSelectedCharacteristics(selectedCharacteristics.filter(c => c !== characteristic));
-    } else {
-      setSelectedCharacteristics([...selectedCharacteristics, characteristic]);
-    }
+    const updatedCharacteristics = selectedCharacteristics.includes(characteristic)
+      ? selectedCharacteristics.filter(c => c !== characteristic)
+      : [...selectedCharacteristics, characteristic];
     
-    form.setValue("characteristics", selectedCharacteristics);
+    setSelectedCharacteristics(updatedCharacteristics);
+    form.setValue("characteristics", updatedCharacteristics);
   };
 
   const toggleTrigger = (trigger: string) => {
-    if (selectedTriggers.includes(trigger)) {
-      setSelectedTriggers(selectedTriggers.filter(t => t !== trigger));
-    } else {
-      setSelectedTriggers([...selectedTriggers, trigger]);
-    }
+    const updatedTriggers = selectedTriggers.includes(trigger)
+      ? selectedTriggers.filter(t => t !== trigger)
+      : [...selectedTriggers, trigger];
     
-    form.setValue("triggers", selectedTriggers);
+    setSelectedTriggers(updatedTriggers);
+    form.setValue("triggers", updatedTriggers);
   };
 
   const getPainIntensityLabel = (intensity: number) => {

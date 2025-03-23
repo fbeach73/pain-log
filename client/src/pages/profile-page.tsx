@@ -122,7 +122,7 @@ export default function ProfilePage() {
   };
   
   // Update form when profile data is loaded
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       form.reset({
         firstName: profile.firstName || "",
@@ -144,7 +144,7 @@ export default function ProfilePage() {
         preferredResources: profile.preferredResources as string[] || [],
       });
     }
-  });
+  }, [profile, form]);
 
   return (
     <div className="flex flex-col min-h-screen">
