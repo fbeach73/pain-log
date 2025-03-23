@@ -59,17 +59,7 @@ type Report = {
 const MemoryStore = createMemoryStore(session);
 
 // Define the reminder settings type
-type ReminderSettings = {
-  userId: number;
-  emailNotifications: boolean;
-  painLogReminders: boolean;
-  medicationReminders: boolean;
-  wellnessReminders: boolean;
-  weeklySummary: boolean;
-  reminderFrequency: string;
-  preferredTime: string;
-  notificationStyle: string;
-};
+// No need for a custom ReminderSettings type, use ReminderSetting from schema.ts
 
 export interface IStorage {
   // User management
@@ -100,8 +90,8 @@ export interface IStorage {
   getReportsByUserId(userId: number): Promise<Report[]>;
   
   // Reminder Settings
-  getReminderSettings(userId: number): Promise<ReminderSettings | undefined>;
-  updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings>;
+  getReminderSettings(userId: number): Promise<ReminderSetting | undefined>;
+  updateReminderSettings(userId: number, settings: Partial<ReminderSetting>): Promise<ReminderSetting>;
   
   // Session store
   sessionStore: ReturnType<typeof createMemoryStore>;
