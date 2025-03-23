@@ -105,6 +105,7 @@ export interface IStorage {
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { Pool } from '@neondatabase/serverless';
 import ConnectPgSimple from 'connect-pg-simple';
+import { eq } from 'drizzle-orm';
 
 export class PostgresStorage implements IStorage {
   private pool: Pool;
@@ -535,6 +536,35 @@ export class PostgresStorage implements IStorage {
     };
     
     this.reports.set(sampleReport.id, sampleReport);
+  }
+  
+  async getReminderSettings(userId: number): Promise<ReminderSettings | undefined> {
+    // For PostgreSQL implementation, you would query a reminder_settings table
+    // For now, we'll return default settings (same as the MemStorage implementation)
+    return {
+      userId,
+      emailNotifications: true,
+      painLogReminders: true,
+      medicationReminders: true,
+      wellnessReminders: true,
+      weeklySummary: true,
+      reminderFrequency: "daily",
+      preferredTime: "evening",
+      notificationStyle: "gentle"
+    };
+  }
+  
+  async updateReminderSettings(userId: number, settings: Partial<ReminderSettings>): Promise<ReminderSettings> {
+    // For PostgreSQL implementation, you would upsert into a reminder_settings table
+    // For now, we'll return the merged settings (same as MemStorage implementation)
+    const existingSettings = await this.getReminderSettings(userId);
+    const updatedSettings: ReminderSettings = {
+      ...existingSettings!,
+      ...settings,
+      userId
+    };
+    
+    return updatedSettings;
   }
 }
 
