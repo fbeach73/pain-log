@@ -85,55 +85,46 @@ export interface IStorage {
   sessionStore: ReturnType<typeof createMemoryStore>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private painEntries: Map<number, PainEntry>;
-  private medications: Map<number, Medication>;
-  private medicationTaken: Map<string, boolean>;
-  private resources: Map<string, Resource>;
-  private reports: Map<string, Report>;
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import { Pool } from '@neondatabase/serverless';
+import ConnectPgSimple from 'connect-pg-simple';
+
+export class PostgresStorage implements IStorage {
+  private pool: Pool;
+  private db: ReturnType<typeof drizzle>;
   sessionStore: ReturnType<typeof createMemoryStore>;
-  currentUserId: number;
-  currentPainEntryId: number;
-  currentMedicationId: number;
 
   constructor() {
-    this.users = new Map();
-    this.painEntries = new Map();
-    this.medications = new Map();
-    this.medicationTaken = new Map();
-    this.resources = new Map();
-    this.reports = new Map();
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // 24h
-      stale: false // Don't check for stale sessions (important for dev)
-    });
-    this.currentUserId = 1;
-    this.currentPainEntryId = 1;
-    this.currentMedicationId = 1;
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL not found in environment");
+    }
     
-    // Initialize some example resources
-    this.initializeResources();
+    this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    this.db = drizzle(this.pool);
+    
+    // Use PostgreSQL for session storage
+    const pgSession = ConnectPgSimple(session);
+    this.sessionStore = new pgSession({
+      pool: this.pool,
+      tableName: 'user_sessions'
+    });
     
     // Log to confirm initialization
-    console.log('Storage initialized with in-memory session store');
+    console.log('Storage initialized with PostgreSQL');
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    // Initialize default values to avoid type errors
-    const user: User = {
-      id,
+    const result = await this.db.insert(users).values({
       username: insertUser.username,
       password: insertUser.password,
       firstName: insertUser.firstName || null,
@@ -142,7 +133,6 @@ export class MemStorage implements IStorage {
       profileCreated: false,
       medicalHistory: [],
       painBackground: null,
-      // Initialize the new fields with default values
       age: null,
       gender: null,
       height: null,
@@ -154,19 +144,18 @@ export class MemStorage implements IStorage {
       occupation: null,
       primaryDoctor: null,
       preferredResources: []
-    };
+    }).returning();
+
+    const user = result[0];
     
-    this.users.set(id, user);
-    
-    // Create default medication for new user
-    const defaultMedication = {
-      userId: id,
+    // Create default medication
+    await this.createMedication({
+      userId: user.id,
       name: "Ibuprofen",
       dosage: "400mg",
       frequency: "As needed",
       timeOfDay: ["Morning", "Evening"],
-    };
-    await this.createMedication(defaultMedication);
+    });
     
     return user;
   }
