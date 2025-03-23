@@ -73,15 +73,20 @@ export default function AuthPage() {
     }
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
-  // Redirect if already logged in
+  // Redirect if already logged in, but add a small delay to prevent flickering
   useEffect(() => {
     if (user) {
-      navigate("/");
+      // Use a small timeout to prevent flickering during redirects/state changes
+      const redirectTimer = setTimeout(() => {
+        navigate("/");
+      }, 100);
+      
+      return () => clearTimeout(redirectTimer);
     }
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row transition-opacity duration-300 opacity-100">
       {/* Left side - auth forms */}
       <div className="w-full md:w-1/2 p-6 flex items-center justify-center">
         <div className="w-full max-w-md">
