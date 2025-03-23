@@ -521,4 +521,33 @@ export class PostgresStorage implements IStorage {
   }
 }
 
+class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private painEntries: Map<number, PainEntry>;
+  private medications: Map<number, Medication>;
+  private medicationTaken: Map<string, boolean>;
+  private resources: Map<string, Resource>;
+  private reports: Map<string, Report>;
+  private currentUserId: number;
+  private currentPainEntryId: number;
+  private currentMedicationId: number;
+  sessionStore: ReturnType<typeof createMemoryStore>;
+
+  constructor() {
+    this.users = new Map();
+    this.painEntries = new Map();
+    this.medications = new Map();
+    this.medicationTaken = new Map();
+    this.resources = new Map();
+    this.reports = new Map();
+    this.currentUserId = 1;
+    this.currentPainEntryId = 1;
+    this.currentMedicationId = 1;
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
+    this.initializeResources();
+  }
+}
+
 export const storage = new MemStorage();
