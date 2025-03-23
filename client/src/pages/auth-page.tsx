@@ -97,7 +97,7 @@ export default function AuthPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3 3 3-3" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold">PainTrack</h1>
+            <h1 className="text-3xl font-bold">PainClinics.com <span className="text-primary">PainTracker</span></h1>
             <p className="text-slate-600 mt-2">Track, Analyze and Manage Your Pain</p>
           </div>
 
@@ -291,7 +291,7 @@ export default function AuthPage() {
           </div>
           <div className="mt-8 p-4 bg-white/10 rounded-lg">
             <p className="italic text-white/90">
-              "PainTrack helps you communicate your pain experience more effectively with healthcare providers, leading to better treatment outcomes."
+              "PainClinics.com PainTracker helps you communicate your pain experience more effectively with healthcare providers, leading to better treatment outcomes."
             </p>
           </div>
         </div>
