@@ -43,6 +43,8 @@ const painFormSchema = insertPainEntrySchema.omit({ userId: true }).extend({
   locations: z.array(z.string()).min(1, "Select at least one location"),
   hasMedication: z.boolean(),
   medicationId: z.number().optional(),
+  mood: z.string().optional(),
+  moodRating: z.number().min(1).max(5).optional(),
 });
 
 type PainFormValues = z.infer<typeof painFormSchema>;
@@ -83,6 +85,8 @@ export default function PainForm() {
       medicationTaken: false,
       medications: [],
       hasMedication: false,
+      mood: "",
+      moodRating: 3,
     },
   });
 
@@ -130,6 +134,8 @@ export default function PainForm() {
         medications: values.hasMedication && values.medicationId 
           ? [values.medicationId.toString()]
           : [],
+        mood: values.mood,
+        moodRating: values.moodRating,
       };
       
       console.log("Prepared pain data for submission with userId:", user?.id);
