@@ -71,13 +71,12 @@ export default function Header() {
         <div className="flex items-center">
           <Link href="/">
             <a className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3 3 3-3" />
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary">
+                <path d="M8 11h6M12 4c.5 1.5 2 2 4 2 2 0 3.5-.5 4-2 0 0-1 5-8 5s-8-5-8-5c.5 1.5 2 2 4 2 2 0 3.5-.5 4-2Zm0 10c-5 2-8 7-8 7h16s-3-5-8-7Zm0 0V9" />
               </svg>
               <div className="ml-2 flex flex-col justify-center">
                 <h1 className="text-xl font-semibold">Pain Tracker</h1>
-                <p className="text-[10px] text-gray-600 -mt-1">by PainClinics.com</p>
+                <p className="text-xs text-gray-600 -mt-1">by Painclinics.com</p>
               </div>
             </a>
           </Link>

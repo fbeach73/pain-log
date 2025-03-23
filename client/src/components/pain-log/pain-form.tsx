@@ -56,7 +56,7 @@ export default function PainForm() {
   const [selectedCharacteristics, setSelectedCharacteristics] = useState<string[]>([]);
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
   
-  const { data: medications, refetch: refetchMedications } = useQuery<Medication[]>({
+  const { data: medications, refetch: refetchMedications, isLoading: isMedicationsLoading } = useQuery<Medication[]>({
     queryKey: ["/api/medications"],
     enabled: !!user,
     staleTime: 0, // Always refetch to ensure we have the latest data
@@ -510,21 +510,45 @@ export default function PainForm() {
                           control={form.control}
                           name="medicationId"
                           render={({ field }) => (
-                            <Select 
-                              onValueChange={(value) => field.onChange(parseInt(value))}
-                              value={field.value?.toString()}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select medication" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {medications?.map((med) => (
-                                  <SelectItem key={med.id} value={med.id.toString()}>
-                                    {med.name} {med.dosage}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <>
+                              <Select 
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                value={field.value?.toString()}
+                                disabled={isMedicationsLoading}
+                              >
+                                <SelectTrigger>
+                                  {isMedicationsLoading ? (
+                                    <span className="flex items-center">
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Loading medications...
+                                    </span>
+                                  ) : (
+                                    <SelectValue placeholder="Select medication" />
+                                  )}
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {medications && medications.length > 0 ? (
+                                    medications.map((med) => (
+                                      <SelectItem key={med.id} value={med.id.toString()}>
+                                        {med.name} {med.dosage ? `(${med.dosage})` : ''}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="no-med" disabled>
+                                      No medications found. Add them in your profile.
+                                    </SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              {!isMedicationsLoading && medications && medications.length === 0 && (
+                                <p className="text-sm text-amber-600 mt-2">
+                                  You haven't added any medications yet. 
+                                  <Button variant="link" className="h-auto p-0 ml-1" onClick={() => navigate("/profile")}>
+                                    Add medications in your profile
+                                  </Button>
+                                </p>
+                              )}
+                            </>
                           )}
                         />
                       </div>

@@ -156,12 +156,12 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-bold mb-6">Profile Settings</h1>
           
           <Tabs defaultValue="personal">
-            <div className="overflow-x-auto">
-              <TabsList className="mb-6 min-w-max">
-                <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                <TabsTrigger value="medical">Medical History</TabsTrigger>
-                <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                <TabsTrigger value="privacy">Privacy & Data</TabsTrigger>
+            <div className="overflow-x-auto pb-2 -mb-2 scrollbar-none">
+              <TabsList className="mb-6 min-w-max space-x-1">
+                <TabsTrigger value="personal" className="px-4">Personal Info</TabsTrigger>
+                <TabsTrigger value="medical" className="px-4">Medical History</TabsTrigger>
+                <TabsTrigger value="notifications" className="px-4">Notifications</TabsTrigger>
+                <TabsTrigger value="privacy" className="px-4">Privacy & Data</TabsTrigger>
               </TabsList>
             </div>
             
