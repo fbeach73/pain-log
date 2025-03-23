@@ -548,6 +548,33 @@ class MemStorage implements IStorage {
     });
     this.initializeResources();
   }
+
+  private initializeResources() {
+    const resources: Resource[] = [
+      {
+        id: "res-1",
+        title: "Understanding Chronic Pain",
+        description: "Learn about the mechanisms of chronic pain and how it differs from acute pain.",
+        type: "article",
+        source: "National Institute of Health",
+        url: "https://www.nih.gov/health-information/pain",
+        tags: ["Education", "Chronic Pain"]
+      },
+      {
+        id: "res-2",
+        title: "Guided Meditation for Pain Relief",
+        description: "A 15-minute guided meditation designed to help manage pain through mindfulness.",
+        type: "video",
+        source: "Pain Management Center",
+        url: "https://www.youtube.com/watch?v=1vx8iUvfyCY",
+        tags: ["Meditation", "Mindfulness", "Relaxation"]
+      }
+    ];
+    
+    resources.forEach(resource => {
+      this.resources.set(resource.id, resource);
+    });
+  }
 }
 
 export const storage = new MemStorage();
