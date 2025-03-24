@@ -27,11 +27,14 @@ import {
 import { Loader2, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
-const medicationSchema = insertMedicationSchema.extend({
-  timeOfDay: z.array(z.string()).min(1, "At least one time of day is required")
-});
+// Create a schema for the form without userId as it will be added later
+const medicationFormSchema = insertMedicationSchema
+  .omit({ userId: true })
+  .extend({
+    timeOfDay: z.array(z.string()).min(1, "At least one time of day is required")
+  });
 
-type MedicationFormValues = z.infer<typeof medicationSchema>;
+type MedicationFormValues = z.infer<typeof medicationFormSchema>;
 
 type AddMedicationFormProps = {
   isOpen: boolean;
@@ -57,7 +60,7 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
   }, [isOpen]);
   
   const form = useForm<MedicationFormValues>({
-    resolver: zodResolver(medicationSchema),
+    resolver: zodResolver(medicationFormSchema),
     defaultValues: {
       name: "",
       dosage: "",
@@ -68,40 +71,46 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
   });
   
   const addMedicationMutation = useMutation({
-    mutationFn: async (values: MedicationFormValues) => {
+    mutationFn: async (values: MedicationFormValues & { userId: number }) => {
       try {
         console.log("Adding medication with values:", JSON.stringify(values, null, 2));
         
-        // Add the userId to the request data
-        const requestData = {
-          ...values,
-          userId: user?.id,
-          timeOfDay: Array.isArray(values.timeOfDay) 
-            ? values.timeOfDay.filter((item): item is string => 
-                typeof item === 'string' && item.trim() !== ''
-              ) 
-            : typeof values.timeOfDay === 'object' 
-              ? Object.values(values.timeOfDay)
-                  .filter((item): item is string => 
-                    typeof item === 'string' && item.trim() !== ''
-                  )
-              : []
-        };
-        
-        if (!requestData.userId) {
+        // Ensure userId is included and valid
+        if (!values.userId) {
           throw new Error("User ID is required");
         }
         
-        if (requestData.timeOfDay.length === 0) {
+        // Ensure timeOfDay is an array of valid strings
+        if (!Array.isArray(values.timeOfDay) || values.timeOfDay.length === 0) {
           throw new Error("At least one time of day is required");
+        }
+        
+        // Create a clean request payload
+        const requestData = {
+          name: values.name,
+          dosage: values.dosage,
+          frequency: values.frequency,
+          userId: values.userId,
+          timeOfDay: values.timeOfDay.filter(time => typeof time === 'string' && time.trim() !== '')
+        };
+        
+        if (requestData.timeOfDay.length === 0) {
+          throw new Error("At least one valid time of day is required");
         }
         
         console.log("Sending cleaned medication data:", JSON.stringify(requestData, null, 2));
         
         const res = await apiRequest("POST", "/api/medications", requestData);
         if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Failed to add medication");
+          const errorText = await res.text();
+          let errorMessage;
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || "Failed to add medication";
+          } catch {
+            errorMessage = errorText || "Failed to add medication";
+          }
+          throw new Error(errorMessage);
         }
         const data = await res.json();
         console.log("Medication added response:", data);
@@ -132,26 +141,46 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
   });
   
   const onSubmit = (values: MedicationFormValues) => {
-    // Ensure the timeOfDay field has all the added times
-    // Filter out any empty strings from the times array
-    const filteredTimes = times.filter(time => time.trim() !== '');
-    
-    if (filteredTimes.length === 0) {
-      form.setError("timeOfDay", { 
-        type: "manual", 
-        message: "At least one time of day is required" 
+    try {
+      // Check if user is logged in
+      if (!user?.id) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to add medications",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Ensure the timeOfDay field has all the added times
+      // Filter out any empty strings from the times array
+      const filteredTimes = times.filter(time => time.trim() !== '');
+      
+      if (filteredTimes.length === 0) {
+        form.setError("timeOfDay", { 
+          type: "manual", 
+          message: "At least one time of day is required" 
+        });
+        return;
+      }
+      
+      // Create a clean copy of the values with the filtered times
+      const formData = {
+        ...values,
+        timeOfDay: filteredTimes,
+        userId: user.id // We know this is defined because we checked above
+      };
+      
+      console.log("Submitting medication with data:", JSON.stringify(formData, null, 2));
+      addMedicationMutation.mutate(formData);
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      toast({
+        title: "Form submission error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
       });
-      return;
     }
-    
-    // Create a clean copy of the values with the filtered times
-    const formData = {
-      ...values,
-      timeOfDay: filteredTimes
-    };
-    
-    console.log("Submitting medication with data:", JSON.stringify(formData, null, 2));
-    addMedicationMutation.mutate(formData);
   };
   
   const addTime = () => {
@@ -268,13 +297,16 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
             </div>
             
             <DialogFooter className="flex justify-between">
-              <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
-              </DialogClose>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onClose()}
+              >
+                Cancel
+              </Button>
               <Button 
                 type="submit" 
                 disabled={addMedicationMutation.isPending}
-                onClick={form.handleSubmit(onSubmit)}
               >
                 {addMedicationMutation.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
