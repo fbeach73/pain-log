@@ -81,6 +81,7 @@ export interface IStorage {
   getMedicationsByUserId(userId: number): Promise<Medication[]>;
   getTodayMedications(userId: number): Promise<MedicationWithStatus[]>;
   takeMedication(medicationId: number, doseIndex: number): Promise<any>;
+  getMedicationTakenStatus(medicationId: number, doseIndex: number): boolean;
   
   // Resources & Recommendations
   getRecommendations(userId: number): Promise<Recommendation[]>;
@@ -667,11 +668,16 @@ export class PostgresStorage implements IStorage {
       const meds = await this.getMedicationsByUserId(userId);
       const today = format(new Date(), "yyyy-MM-dd");
       
-      // TODO: In a production app, we would have a medication_taken table
-      // For now, we'll simulate medication status
+      // Check medication status from our temporary memory storage
       return meds.map(med => {
         const timeOfDay = med.timeOfDay || [];
-        const takenToday = timeOfDay.map(() => false);
+        // Check if each medication dose has been taken today
+        const takenToday = timeOfDay.map((_, index) => {
+          const key = `${med.id}-${today}-${index}`;
+          // We use the MemStorage's getTodayMedications with a mock medication to check
+          // since we can't access the private medicationTaken map directly
+          return this.memFallback.getMedicationTakenStatus(med.id, index);
+        });
         
         return {
           ...med,
@@ -695,7 +701,8 @@ export class PostgresStorage implements IStorage {
         throw new Error("Medication not found");
       }
       
-      // TODO: In a production app, we would insert into a medication_taken table
+      // Use the memFallback storage to mark the medication as taken
+      await this.memFallback.takeMedication(medicationId, doseIndex);
       
       return { success: true, medicationId, doseIndex };
     } catch (error) {
