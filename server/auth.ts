@@ -1,17 +1,21 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import fs from "fs";
+import path from "path";
+import createMemoryStore from "memorystore";
 
 // Extend the session type to include our custom properties
 declare module 'express-session' {
   interface SessionData {
     loggedIn?: boolean;
     loginTime?: string;
+    adminId?: number;
     passport?: {
       user?: number; // User ID stored by passport
     };
@@ -47,11 +51,17 @@ export function setupAuth(app: Express) {
   const isProd = process.env.NODE_ENV === 'production';
   console.log(`Setting up auth in ${isProd ? 'production' : 'development'} mode`);
 
+  // Create a more reliable memory store for sessions
+  const MemoryStore = createMemoryStore(session);
+  const memoryStore = new MemoryStore({
+    checkPeriod: 86400000, // Prune expired entries every 24h (1 day in ms)
+  });
+  
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
     resave: true, // Save session on every request to ensure it persists
     saveUninitialized: true, // Create session before anything is stored (for better compatibility)
-    store: storage.sessionStore,
+    store: memoryStore, // Use our direct memory store instead of storage.sessionStore
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
