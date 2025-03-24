@@ -9,6 +9,8 @@ import { User as SelectUser } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 import createMemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
+import { pool } from "./db";
 
 // Extend the session type to include our custom properties
 declare module 'express-session' {
@@ -51,18 +53,36 @@ export function setupAuth(app: Express) {
   const isProd = process.env.NODE_ENV === 'production';
   console.log(`Setting up auth in ${isProd ? 'production' : 'development'} mode`);
 
-  // Create a dedicated memory store for sessions
-  const MemoryStore = createMemoryStore(session);
-  const reliableMemoryStore = new MemoryStore({
-    checkPeriod: 86400000, // Prune expired entries every 24h (1 day in ms)
-  });
+  // Initialize session store based on environment
+  let sessionStore;
   
-  // Use dedicated memory store by default which is more reliable during development
+  // Check if we have a database connection for PostgreSQL session store
+  if (pool) {
+    console.log("Using PostgreSQL session store for persistent sessions");
+    
+    // Initialize connect-pg-simple
+    const PgSessionStore = connectPgSimple(session);
+    sessionStore = new PgSessionStore({
+      pool, // Pass the PostgreSQL pool
+      tableName: 'session', // Table name to use for sessions
+      createTableIfMissing: true, // Create the table if it doesn't exist
+      pruneSessionInterval: 60 * 60 // Prune expired sessions every hour (in seconds)
+    });
+  } else {
+    // Fallback to memory store if no database connection
+    console.log("WARNING: Falling back to memory session store - sessions will not persist across server restarts!");
+    const MemoryStore = createMemoryStore(session);
+    sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // Prune expired entries every 24h (1 day in ms)
+    });
+  }
+  
+  // Use dedicated PostgreSQL store for sessions when available
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
     resave: true, // Save session on every request to ensure it persists
     saveUninitialized: true, // Create session before anything is stored (for better compatibility)
-    store: reliableMemoryStore, // Use our local memory store instead of storage.sessionStore
+    store: sessionStore, // Use our PostgreSQL store or fallback to memory store
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
