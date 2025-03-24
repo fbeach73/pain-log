@@ -594,6 +594,13 @@ export class PostgresStorage implements IStorage {
       
       console.log("Cleaned medication data:", JSON.stringify(medicationData));
       
+      // Convert timeOfDay properly to ensure it's a real array before inserting
+      if (medicationData.timeOfDay && !Array.isArray(medicationData.timeOfDay)) {
+        console.log("Converting timeOfDay to array during insertion");
+        medicationData.timeOfDay = Object.values(medicationData.timeOfDay);
+      }
+      
+      console.log("Final medication data before insertion:", JSON.stringify(medicationData));
       const result = await this.db.insert(medications).values(medicationData).returning();
       
       if (!result || result.length === 0) {

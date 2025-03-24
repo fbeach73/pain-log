@@ -54,10 +54,26 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
   
   const addMedicationMutation = useMutation({
     mutationFn: async (values: MedicationFormValues) => {
-      const res = await apiRequest("POST", "/api/medications", values);
-      return await res.json();
+      try {
+        console.log("Adding medication with values:", JSON.stringify(values, null, 2));
+        
+        // Ensure timeOfDay is an array
+        if (values.timeOfDay && !Array.isArray(values.timeOfDay)) {
+          console.log("Converting timeOfDay to array:", values.timeOfDay);
+          values.timeOfDay = Object.values(values.timeOfDay);
+        }
+        
+        const res = await apiRequest("POST", "/api/medications", values);
+        const data = await res.json();
+        console.log("Medication added response:", data);
+        return data;
+      } catch (error) {
+        console.error("Error adding medication:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
+      console.log("Medication added successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/medications/today"] });
       form.reset();
       onClose();
@@ -67,9 +83,10 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
       });
     },
     onError: (error: Error) => {
+      console.error("Medication add error:", error);
       toast({
         title: "Failed to add medication",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     }
