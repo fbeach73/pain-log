@@ -267,11 +267,15 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
               )}
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="flex justify-between">
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={addMedicationMutation.isPending}>
+              <Button 
+                type="submit" 
+                disabled={addMedicationMutation.isPending}
+                onClick={form.handleSubmit(onSubmit)}
+              >
                 {addMedicationMutation.isPending ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
