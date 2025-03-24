@@ -582,23 +582,44 @@ export class PostgresStorage implements IStorage {
         throw new Error('Medication name is required');
       }
       
+      // Handle timeOfDay correctly
+      let timeOfDayArray: string[] = [];
+      
+      // First check if it's already an array
+      if (Array.isArray(medication.timeOfDay)) {
+        timeOfDayArray = medication.timeOfDay;
+      } 
+      // Then check if it's an object that needs to be converted to an array
+      else if (medication.timeOfDay && typeof medication.timeOfDay === 'object') {
+        console.log("Converting object timeOfDay to array during insertion");
+        timeOfDayArray = Object.values(medication.timeOfDay);
+      }
+      // If it's a string, try to parse it as JSON
+      else if (typeof medication.timeOfDay === 'string') {
+        try {
+          const parsed = JSON.parse(medication.timeOfDay);
+          if (Array.isArray(parsed)) {
+            timeOfDayArray = parsed;
+          } else if (typeof parsed === 'object') {
+            timeOfDayArray = Object.values(parsed);
+          }
+        } catch (e) {
+          // If parsing fails, treat it as a single item array
+          timeOfDayArray = [medication.timeOfDay];
+        }
+      }
+      
+      console.log("Processed timeOfDay array:", JSON.stringify(timeOfDayArray));
+      
       // Create a clean object to avoid type issues
       const medicationData = {
         userId: medication.userId,
         name: medication.name.trim(),
         dosage: medication.dosage || null,
         frequency: medication.frequency || null,
-        timeOfDay: Array.isArray(medication.timeOfDay) ? medication.timeOfDay : [],
+        timeOfDay: timeOfDayArray,
         active: medication.active !== undefined ? medication.active : true
       };
-      
-      console.log("Cleaned medication data:", JSON.stringify(medicationData));
-      
-      // Convert timeOfDay properly to ensure it's a real array before inserting
-      if (medicationData.timeOfDay && !Array.isArray(medicationData.timeOfDay)) {
-        console.log("Converting timeOfDay to array during insertion");
-        medicationData.timeOfDay = Object.values(medicationData.timeOfDay);
-      }
       
       console.log("Final medication data before insertion:", JSON.stringify(medicationData));
       const result = await this.db.insert(medications).values(medicationData).returning();
@@ -1201,16 +1222,32 @@ class MemStorage implements IStorage {
   }
 
   async createMedication(medication: InsertMedication): Promise<Medication> {
+    console.log("MemStorage createMedication called with:", JSON.stringify(medication, null, 2));
+    
     const id = this.currentMedicationId++;
+    
+    // Ensure timeOfDay is properly handled as an array
+    let timeOfDayArray: string[] | null = null;
+    if (medication.timeOfDay) {
+      if (Array.isArray(medication.timeOfDay)) {
+        timeOfDayArray = medication.timeOfDay;
+      } else {
+        console.log("Converting non-array timeOfDay to array:", medication.timeOfDay);
+        timeOfDayArray = Object.values(medication.timeOfDay);
+      }
+    }
+    
     const newMedication: Medication = {
       id,
       userId: medication.userId,
       name: medication.name,
       dosage: medication.dosage || null,
       frequency: medication.frequency || null,
-      timeOfDay: medication.timeOfDay || null,
+      timeOfDay: timeOfDayArray,
       active: medication.active !== undefined ? medication.active : true
     };
+    
+    console.log("Storing new medication in memory storage:", JSON.stringify(newMedication, null, 2));
     this.medications.set(id, newMedication);
     return newMedication;
   }

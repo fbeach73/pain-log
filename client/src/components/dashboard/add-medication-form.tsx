@@ -57,13 +57,24 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
       try {
         console.log("Adding medication with values:", JSON.stringify(values, null, 2));
         
-        // Ensure timeOfDay is an array
-        if (values.timeOfDay && !Array.isArray(values.timeOfDay)) {
-          console.log("Converting timeOfDay to array:", values.timeOfDay);
-          values.timeOfDay = Object.values(values.timeOfDay);
+        // Create a clean copy of the values to send to the server
+        // Ensure timeOfDay is always a proper array
+        const requestData = {
+          ...values,
+          timeOfDay: Array.isArray(values.timeOfDay) 
+            ? values.timeOfDay.filter(item => item && item.trim() !== '') 
+            : typeof values.timeOfDay === 'object' 
+              ? Object.values(values.timeOfDay).filter(item => item && item.trim() !== '')
+              : []
+        };
+        
+        if (requestData.timeOfDay.length === 0) {
+          throw new Error("At least one time of day is required");
         }
         
-        const res = await apiRequest("POST", "/api/medications", values);
+        console.log("Sending cleaned medication data:", JSON.stringify(requestData, null, 2));
+        
+        const res = await apiRequest("POST", "/api/medications", requestData);
         const data = await res.json();
         console.log("Medication added response:", data);
         return data;
@@ -94,8 +105,25 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
   
   const onSubmit = (values: MedicationFormValues) => {
     // Ensure the timeOfDay field has all the added times
-    values.timeOfDay = times;
-    addMedicationMutation.mutate(values);
+    // Filter out any empty strings from the times array
+    const filteredTimes = times.filter(time => time.trim() !== '');
+    
+    if (filteredTimes.length === 0) {
+      form.setError("timeOfDay", { 
+        type: "manual", 
+        message: "At least one time of day is required" 
+      });
+      return;
+    }
+    
+    // Create a clean copy of the values with the filtered times
+    const formData = {
+      ...values,
+      timeOfDay: filteredTimes
+    };
+    
+    console.log("Submitting medication with data:", JSON.stringify(formData, null, 2));
+    addMedicationMutation.mutate(formData);
   };
   
   const addTime = () => {
