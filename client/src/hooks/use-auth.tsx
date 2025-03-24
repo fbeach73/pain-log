@@ -128,48 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Function to directly check admin status and create manual session
-// This should be used only for explicit user-triggered actions, not automatic logins
-export async function checkAdminLogin() {
-  try {
-    console.log("Auth hook: Checking for admin login...");
-    
-    // First try the standard /api/user endpoint 
-    const userResponse = await fetch('/api/user', {
-      credentials: 'include'
-    });
-    
-    if (userResponse.ok) {
-      console.log("Auth hook: User already authenticated");
-      return { success: true, source: 'user-api' };
-    }
-    
-    // If that fails, try the admin-check endpoint
-    const adminCheckResponse = await fetch('/api/admin-check', {
-      credentials: 'include'
-    });
-    
-    if (adminCheckResponse.ok) {
-      const adminData = await adminCheckResponse.json();
-      console.log("Auth hook: Admin check response:", adminData);
-      
-      if (adminData.success) {
-        console.log("Auth hook: Admin user found");
-        
-        // Force query client to update with admin user data
-        queryClient.setQueryData(['/api/user'], adminData.user);
-        
-        return { success: true, source: 'admin-check', user: adminData.user };
-      }
-    }
-    
-    // No more automatic direct login - user must explicitly log in through the UI
-    return { success: false, message: "Authentication required" };
-  } catch (error) {
-    console.error("Auth hook: Error checking admin login:", error);
-    return { success: false, error };
-  }
-}
+
 
 export function useAuth() {
   const context = useContext(AuthContext);
