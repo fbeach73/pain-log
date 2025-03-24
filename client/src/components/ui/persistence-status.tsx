@@ -92,8 +92,20 @@ export default function PersistenceStatus() {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`flex items-center space-x-2 bg-${statusColor === 'green' ? 'green' : statusColor === 'yellow' ? 'yellow' : 'destructive'}/10 backdrop-blur-sm rounded p-1 px-2 border border-${statusColor === 'green' ? 'green' : statusColor === 'yellow' ? 'yellow' : 'destructive'}/50`}>
-            <div className={`h-2 w-2 rounded-full bg-${statusColor === 'green' ? 'green-500' : statusColor === 'yellow' ? 'yellow-500' : 'destructive'}`}></div>
+          <div className={`flex items-center space-x-2 backdrop-blur-sm rounded p-1 px-2 border ${
+            statusColor === 'green' 
+              ? 'bg-green-500/10 border-green-500/50' 
+              : statusColor === 'yellow' 
+                ? 'bg-yellow-500/10 border-yellow-500/50' 
+                : 'bg-destructive/10 border-destructive/50'
+          }`}>
+            <div className={`h-2 w-2 rounded-full ${
+              statusColor === 'green' 
+                ? 'bg-green-500' 
+                : statusColor === 'yellow' 
+                  ? 'bg-yellow-500'
+                  : 'bg-destructive'
+            }`}></div>
             <span className="text-xs font-medium text-muted-foreground">{statusText}</span>
           </div>
         </TooltipTrigger>
@@ -108,19 +120,19 @@ export default function PersistenceStatus() {
             <div className="flex flex-col gap-1 text-xs">
               <div className="flex justify-between">
                 <span>Database Configured:</span>
-                <Badge variant={status.configured ? "success" : "destructive"}>
+                <Badge variant={status.configured ? "default" : "destructive"} className={status.configured ? "bg-green-500 hover:bg-green-500/80" : ""}>
                   {status.configured ? "Yes" : "No"}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>Database Connected:</span>
-                <Badge variant={status.connected ? "success" : "destructive"}>
+                <Badge variant={status.connected ? "default" : "destructive"} className={status.connected ? "bg-green-500 hover:bg-green-500/80" : ""}>
                   {status.connected ? "Yes" : "No"}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>Session Persistence:</span>
-                <Badge variant={status.sessionPersistence ? "success" : "destructive"}>
+                <Badge variant={status.sessionPersistence ? "default" : "destructive"} className={status.sessionPersistence ? "bg-green-500 hover:bg-green-500/80" : ""}>
                   {status.sessionPersistence ? "Working" : "Not Working"}
                 </Badge>
               </div>
