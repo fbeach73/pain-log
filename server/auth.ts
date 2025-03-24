@@ -57,11 +57,10 @@ export function setupAuth(app: Express) {
     proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
-      secure: false, // Never use secure in development (needed for http->https)
+      secure: false, // Set to false for development
       sameSite: "lax", // Standard cookie same-site policy
-      httpOnly: false, // Allow JavaScript access for debugging
-      path: '/',
-      domain: undefined // Auto-detect domain
+      httpOnly: true, // Set to true for security
+      path: '/'
     }
   };
 
