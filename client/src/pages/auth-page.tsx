@@ -186,11 +186,18 @@ export default function AuthPage() {
                         <Button 
                           type="button" 
                           variant="outline" 
-                          className="w-full" 
+                          className="w-full mb-2" 
                           onClick={useTestAccount}
                         >
                           Use Test Account
                         </Button>
+                        <p className="text-xs text-muted-foreground mb-1">Having trouble logging in?</p>
+                        <a 
+                          href="/api/backdoor-login" 
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Click here for direct admin login
+                        </a>
                       </div>
                     </form>
                   </Form>
