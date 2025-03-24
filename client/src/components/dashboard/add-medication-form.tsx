@@ -62,9 +62,14 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
         const requestData = {
           ...values,
           timeOfDay: Array.isArray(values.timeOfDay) 
-            ? values.timeOfDay.filter(item => item && item.trim() !== '') 
+            ? values.timeOfDay.filter((item): item is string => 
+                typeof item === 'string' && item.trim() !== ''
+              ) 
             : typeof values.timeOfDay === 'object' 
-              ? Object.values(values.timeOfDay).filter(item => item && item.trim() !== '')
+              ? Object.values(values.timeOfDay)
+                  .filter((item): item is string => 
+                    typeof item === 'string' && item.trim() !== ''
+                  )
               : []
         };
         

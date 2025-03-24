@@ -156,16 +156,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Set userId from authenticated user
       const userId = req.user!.id;
+      
+      console.log("Received medication data:", JSON.stringify(req.body, null, 2));
+      
+      // Process timeOfDay to ensure it's always a proper array
+      let timeOfDay: string[] = [];
+      
+      // Handle timeOfDay array processing
+      if (req.body.timeOfDay) {
+        if (Array.isArray(req.body.timeOfDay)) {
+          // Filter out empty entries
+          timeOfDay = req.body.timeOfDay
+            .filter((time: unknown): time is string => 
+              typeof time === 'string' && time.trim() !== ''
+            );
+        } else if (typeof req.body.timeOfDay === 'object') {
+          // Convert object to array (handling form data serialization issues)
+          timeOfDay = Object.values(req.body.timeOfDay)
+            .filter((time: unknown): time is string => 
+              typeof time === 'string' && time.trim() !== ''
+            );
+        } else if (typeof req.body.timeOfDay === 'string') {
+          // Try to parse JSON string or treat as single value
+          try {
+            const parsed = JSON.parse(req.body.timeOfDay);
+            if (Array.isArray(parsed)) {
+              timeOfDay = parsed.filter((time: unknown): time is string => 
+                typeof time === 'string' && time.trim() !== ''
+              );
+            } else if (typeof parsed === 'object') {
+              timeOfDay = Object.values(parsed).filter((time: unknown): time is string => 
+                typeof time === 'string' && time.trim() !== ''
+              );
+            }
+          } catch (e) {
+            // If parsing fails, use it as a single item
+            if (req.body.timeOfDay.trim() !== '') {
+              timeOfDay = [req.body.timeOfDay];
+            }
+          }
+        }
+      }
+      
+      console.log("Processed timeOfDay array:", timeOfDay);
+      
+      // Create a clean medication data object
       const medicationData = {
-        ...req.body,
-        userId: userId
+        userId: userId,
+        name: req.body.name ? req.body.name.trim() : '',
+        dosage: req.body.dosage || null,
+        frequency: req.body.frequency || null,
+        timeOfDay: timeOfDay,
+        active: req.body.active !== undefined ? req.body.active : true
       };
       
-      console.log("Creating medication with data:", medicationData);
+      console.log("Creating medication with processed data:", JSON.stringify(medicationData, null, 2));
       
+      // Validate the data using schema
       const validatedData = insertMedicationSchema.parse(medicationData);
       const medication = await storage.createMedication(validatedData);
-      
       console.log("Medication created successfully:", medication);
       
       res.status(201).json(medication);

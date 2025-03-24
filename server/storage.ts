@@ -587,21 +587,29 @@ export class PostgresStorage implements IStorage {
       
       // First check if it's already an array
       if (Array.isArray(medication.timeOfDay)) {
-        timeOfDayArray = medication.timeOfDay;
+        timeOfDayArray = [...medication.timeOfDay].filter(
+          (time): time is string => typeof time === 'string' && time.trim() !== ''
+        );
       } 
       // Then check if it's an object that needs to be converted to an array
       else if (medication.timeOfDay && typeof medication.timeOfDay === 'object') {
         console.log("Converting object timeOfDay to array during insertion");
-        timeOfDayArray = Object.values(medication.timeOfDay);
+        timeOfDayArray = Object.values(medication.timeOfDay).filter(
+          (time): time is string => typeof time === 'string' && time.trim() !== ''
+        );
       }
       // If it's a string, try to parse it as JSON
       else if (typeof medication.timeOfDay === 'string') {
         try {
           const parsed = JSON.parse(medication.timeOfDay);
           if (Array.isArray(parsed)) {
-            timeOfDayArray = parsed;
+            timeOfDayArray = parsed.filter(
+              (time): time is string => typeof time === 'string' && time.trim() !== ''
+            );
           } else if (typeof parsed === 'object') {
-            timeOfDayArray = Object.values(parsed);
+            timeOfDayArray = Object.values(parsed).filter(
+              (time): time is string => typeof time === 'string' && time.trim() !== ''
+            );
           }
         } catch (e) {
           // If parsing fails, treat it as a single item array
