@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth, checkAdminLogin } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 
@@ -17,8 +17,6 @@ export function ProtectedRoute({
   // Effect to verify authentication status when component mounts
   useEffect(() => {
     let isMounted = true;
-    let retryAttempts = 0;
-    const maxRetries = 3;
     
     const verifyAuth = async () => {
       if (!refetchUser) {
@@ -32,25 +30,7 @@ export function ProtectedRoute({
       try {
         console.log("Protected route: Verifying authentication...");
         const result = await refetchUser();
-        let authenticated = !!result.data;
-        
-        // If standard authentication failed, try the admin-check as a backup
-        if (!authenticated) {
-          console.log("Protected route: Standard auth failed, trying admin login check...");
-          const adminResult = await checkAdminLogin();
-          
-          if (adminResult.success) {
-            console.log(`Protected route: Admin auth successful via ${adminResult.source}`);
-            authenticated = true;
-            
-            // Force another refetch to update the auth context
-            if (refetchUser) {
-              await refetchUser();
-            }
-          } else {
-            console.log("Protected route: Admin auth also failed");
-          }
-        }
+        const authenticated = !!result.data;
         
         console.log("Protected route: Authentication verified:", authenticated);
         
@@ -60,31 +40,6 @@ export function ProtectedRoute({
         }
       } catch (error) {
         console.error("Protected route: Failed to verify authentication:", error);
-        
-        // Try admin login as a last resort
-        try {
-          console.log("Protected route: Trying admin login as last resort...");
-          const adminResult = await checkAdminLogin();
-          
-          if (adminResult.success) {
-            console.log("Protected route: Last resort admin login successful");
-            if (isMounted) {
-              setIsAuthenticated(true);
-              setIsVerifying(false);
-            }
-            return;
-          }
-        } catch (adminError) {
-          console.error("Protected route: Admin login also failed:", adminError);
-        }
-        
-        // Implement retry mechanism for auth verification
-        if (retryAttempts < maxRetries) {
-          retryAttempts++;
-          console.log(`Protected route: Retrying authentication (${retryAttempts}/${maxRetries})...`);
-          setTimeout(verifyAuth, 1000); // Wait 1 second before retry
-          return;
-        }
         
         if (isMounted) {
           setIsAuthenticated(false);

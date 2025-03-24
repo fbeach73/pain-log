@@ -73,37 +73,16 @@ export default function AuthPage() {
     }
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
-  // Function to use backdoor login for testing
-  const useBackdoorLogin = async () => {
-    console.log("Auth page: Using backdoor login for testing...");
+  // Function to use admin login for testing
+  const useTestAccount = () => {
+    console.log("Auth page: Using test account login...");
     
-    try {
-      // Use our centralized admin login helper
-      const result = await checkAdminLogin();
-      console.log("Auth page: Admin login check result:", result);
-      
-      if (result.success) {
-        console.log(`Auth page: Admin login successful via ${result.source}`);
-        
-        // Force update the user data in the auth context
-        if (refetchUser) {
-          await refetchUser();
-          console.log("Auth page: User data refetched after successful admin login");
-        }
-        
-        // Manually redirect to dashboard
-        window.location.href = "/";
-        return;
-      }
-      
-      // If the helper function failed, fallback to the backdoor route
-      console.log("Auth page: All direct methods failed, using backdoor login route");
-      window.location.href = "/api/backdoor-login";
-    } catch (error) {
-      console.error("Auth page: Error during login process:", error);
-      // In case of any error, still try the backdoor
-      window.location.href = "/api/backdoor-login";
-    }
+    // Directly log in with the admin credentials using the login mutation
+    loginForm.setValue("username", "admin");
+    loginForm.setValue("password", "admin123");
+    
+    // Submit the form programmatically
+    loginForm.handleSubmit(onLoginSubmit)();
   };
 
   // Attempt to recover session on auth page load
@@ -208,7 +187,7 @@ export default function AuthPage() {
                           type="button" 
                           variant="outline" 
                           className="w-full" 
-                          onClick={useBackdoorLogin}
+                          onClick={useTestAccount}
                         >
                           Use Test Account
                         </Button>

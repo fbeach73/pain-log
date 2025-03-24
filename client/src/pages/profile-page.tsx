@@ -160,10 +160,19 @@ export default function ProfilePage() {
   
   const updateProfileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
-      const res = await apiRequest("PATCH", "/api/user/profile", values);
-      return await res.json();
+      try {
+        console.log("Sending profile update:", JSON.stringify(values, null, 2));
+        const res = await apiRequest("PATCH", "/api/user/profile", values);
+        const data = await res.json();
+        console.log("Profile update response:", data);
+        return data;
+      } catch (error) {
+        console.error("Profile update error:", error);
+        throw error;
+      }
     },
     onSuccess: (updatedProfile) => {
+      console.log("Profile update success:", updatedProfile);
       queryClient.setQueryData(["/api/user/profile"], updatedProfile);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
@@ -172,9 +181,10 @@ export default function ProfilePage() {
       });
     },
     onError: (error) => {
+      console.error("Profile update mutation error:", error);
       toast({
         title: "Update failed",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     },

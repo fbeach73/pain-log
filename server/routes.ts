@@ -267,14 +267,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/user/profile", async (req, res) => {
     try {
-      if (!req.isAuthenticated()) return res.sendStatus(401);
+      console.log("Profile update request received");
+      if (!req.isAuthenticated()) {
+        console.log("Profile update: Unauthorized - user not authenticated");
+        return res.sendStatus(401);
+      }
       
       const userId = req.user!.id;
+      console.log(`Profile update: Processing for user ID ${userId}`);
+      
       const updateData = req.body;
+      console.log(`Profile update data: ${JSON.stringify(updateData, null, 2)}`);
+      
+      // Check for any array type issues and fix them
+      if (updateData.medicalHistory && !Array.isArray(updateData.medicalHistory)) {
+        console.log("Converting medicalHistory to array");
+        updateData.medicalHistory = Object.values(updateData.medicalHistory);
+      }
+      
+      if (updateData.allergies && !Array.isArray(updateData.allergies)) {
+        console.log("Converting allergies to array");
+        updateData.allergies = Object.values(updateData.allergies);
+      }
+      
+      if (updateData.currentMedications && !Array.isArray(updateData.currentMedications)) {
+        console.log("Converting currentMedications to array");
+        updateData.currentMedications = Object.values(updateData.currentMedications);
+      }
+      
+      if (updateData.chronicConditions && !Array.isArray(updateData.chronicConditions)) {
+        console.log("Converting chronicConditions to array");
+        updateData.chronicConditions = Object.values(updateData.chronicConditions);
+      }
+      
+      if (updateData.preferredResources && !Array.isArray(updateData.preferredResources)) {
+        console.log("Converting preferredResources to array");
+        updateData.preferredResources = Object.values(updateData.preferredResources);
+      }
+      
+      console.log(`Profile update sanitized data: ${JSON.stringify(updateData, null, 2)}`);
+      
       const updatedProfile = await storage.updateUser(userId, updateData);
+      console.log("Profile update success:", JSON.stringify(updatedProfile, null, 2));
       res.json(updatedProfile);
     } catch (error) {
-      res.status(500).json({ message: "Failed to update user profile" });
+      console.error("Profile update error:", error);
+      res.status(500).json({ 
+        message: "Failed to update user profile", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
   
