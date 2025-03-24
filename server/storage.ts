@@ -324,16 +324,43 @@ export class PostgresStorage implements IStorage {
 
   async updateUser(id: number, userData: Partial<User>): Promise<User> {
     try {
+      console.log("Starting update for user ID:", id);
+      console.log("Update data:", JSON.stringify(userData));
+      
       const userToUpdate = await this.getUser(id);
       if (!userToUpdate) {
         throw new Error("User not found");
       }
       
-      // Prepare update data with profile created flag
-      const updateData = { ...userData, profileCreated: true };
+      // Clean up input data to ensure compatibility with database
+      const cleanedData: any = {
+        profileCreated: true
+      };
+      
+      // Only include fields that actually need updating
+      if (userData.firstName !== undefined) cleanedData.firstName = userData.firstName;
+      if (userData.lastName !== undefined) cleanedData.lastName = userData.lastName;
+      if (userData.email !== undefined) cleanedData.email = userData.email;
+      if (userData.painBackground !== undefined) cleanedData.painBackground = userData.painBackground;
+      if (userData.age !== undefined) cleanedData.age = userData.age;
+      if (userData.gender !== undefined) cleanedData.gender = userData.gender;
+      if (userData.height !== undefined) cleanedData.height = userData.height;
+      if (userData.weight !== undefined) cleanedData.weight = userData.weight;
+      if (userData.activityLevel !== undefined) cleanedData.activityLevel = userData.activityLevel;
+      if (userData.occupation !== undefined) cleanedData.occupation = userData.occupation; 
+      if (userData.primaryDoctor !== undefined) cleanedData.primaryDoctor = userData.primaryDoctor;
+
+      // Handle array fields differently to avoid type issues
+      if (userData.medicalHistory) cleanedData.medicalHistory = Array.isArray(userData.medicalHistory) ? userData.medicalHistory : [];
+      if (userData.allergies) cleanedData.allergies = Array.isArray(userData.allergies) ? userData.allergies : [];
+      if (userData.currentMedications) cleanedData.currentMedications = Array.isArray(userData.currentMedications) ? userData.currentMedications : [];
+      if (userData.chronicConditions) cleanedData.chronicConditions = Array.isArray(userData.chronicConditions) ? userData.chronicConditions : [];
+      if (userData.preferredResources) cleanedData.preferredResources = Array.isArray(userData.preferredResources) ? userData.preferredResources : [];
+      
+      console.log("Cleaned data for update:", JSON.stringify(cleanedData));
       
       const result = await this.db.update(users)
-        .set(updateData)
+        .set(cleanedData)
         .where(eq(users.id, id))
         .returning();
       
@@ -341,6 +368,7 @@ export class PostgresStorage implements IStorage {
         throw new Error('Failed to update user');
       }
       
+      console.log("Update successful for user ID:", id);
       return result[0];
     } catch (error) {
       console.error('Error updating user:', error);
@@ -543,19 +571,36 @@ export class PostgresStorage implements IStorage {
   // MEDICATIONS
   async createMedication(medication: InsertMedication): Promise<Medication> {
     try {
-      const result = await this.db.insert(medications).values({
+      console.log("Creating medication with data:", JSON.stringify(medication));
+      
+      // Validate and clean the input data
+      if (!medication.userId) {
+        throw new Error('userId is required for medication');
+      }
+      
+      if (!medication.name || medication.name.trim() === '') {
+        throw new Error('Medication name is required');
+      }
+      
+      // Create a clean object to avoid type issues
+      const medicationData = {
         userId: medication.userId,
-        name: medication.name,
+        name: medication.name.trim(),
         dosage: medication.dosage || null,
         frequency: medication.frequency || null,
-        timeOfDay: medication.timeOfDay || null,
+        timeOfDay: Array.isArray(medication.timeOfDay) ? medication.timeOfDay : [],
         active: medication.active !== undefined ? medication.active : true
-      }).returning();
+      };
+      
+      console.log("Cleaned medication data:", JSON.stringify(medicationData));
+      
+      const result = await this.db.insert(medications).values(medicationData).returning();
       
       if (!result || result.length === 0) {
         throw new Error('Failed to create medication');
       }
       
+      console.log("Medication created successfully:", result[0]);
       return result[0];
     } catch (error) {
       console.error('Error creating medication:', error);
