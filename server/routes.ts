@@ -24,6 +24,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
+  
+  // Add a maintenance endpoint for session cleanup (only available during development)
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/maintenance/cleanup-sessions', async (req, res) => {
+      try {
+        // Clean up invalid sessions (like those with user ID 999)
+        if (storage.sessionStore && typeof storage.sessionStore.destroy === 'function') {
+          console.log('Attempting to clean up invalid sessions');
+          // Clean up session with specific ID if provided
+          if (req.query.sid) {
+            await new Promise<void>((resolve, reject) => {
+              storage.sessionStore.destroy(req.query.sid as string, (err) => {
+                if (err) {
+                  console.error('Error destroying specific session:', err);
+                  reject(err);
+                } else {
+                  console.log(`Session ${req.query.sid} destroyed successfully`);
+                  resolve();
+                }
+              });
+            });
+          }
+          
+          res.json({ success: true, message: 'Session cleanup completed' });
+        } else {
+          res.status(400).json({ success: false, message: 'Session store does not support cleanup' });
+        }
+      } catch (error) {
+        console.error('Session cleanup error:', error);
+        res.status(500).json({ success: false, error: String(error) });
+      }
+    });
+  }
 
   // Pain Entries API
   app.post("/api/pain-entries", async (req, res) => {
