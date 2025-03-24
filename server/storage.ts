@@ -39,6 +39,33 @@ type Resource = {
   title: string;
   description: string;
   type: "article" | "video" | "exercise" | "guide";
+
+  private async handleConnectionError() {
+    try {
+      // Close existing pool
+      await this.pool.end();
+      
+      // Create new pool
+      this.pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        max: 20,
+        idleTimeoutMillis: 60000,
+        connectionTimeoutMillis: 20000,
+        statement_timeout: 30000,
+        query_timeout: 30000,
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 30000
+      });
+      
+      // Test new connection
+      await this.testConnection();
+    } catch (error) {
+      console.error('Failed to recover database connection:', error);
+      throw error; // Let the error propagate
+    }
+  }
+
   source: string;
   url: string;
   tags: string[];
@@ -113,7 +140,7 @@ export class PostgresStorage implements IStorage {
   private memFallback: MemStorage;
 
   constructor() {
-    // Initialize MemStorage as fallback
+    // Initialize MemStorage as fallback only for development
     this.memFallback = new MemStorage();
     
     try {
@@ -124,13 +151,16 @@ export class PostgresStorage implements IStorage {
       // Configure PostgreSQL with better options for Replit
       this.pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        // Add additional options to improve connection reliability
         ssl: {
-          rejectUnauthorized: false  // Accept self-signed certificates
+          rejectUnauthorized: false
         },
-        max: 5,                      // Maximum number of clients in the pool
-        idleTimeoutMillis: 30000,    // Close idle clients after 30 seconds
-        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection couldn't be established
+        max: 20,                     // Increased pool size
+        idleTimeoutMillis: 60000,    // Keep connections alive longer
+        connectionTimeoutMillis: 20000, // More time to establish connection
+        statement_timeout: 30000,     // Statement timeout
+        query_timeout: 30000,        // Query timeout
+        keepAlive: true,            // Enable TCP keepalive
+        keepAliveInitialDelayMillis: 30000
       });
       this.db = drizzle(this.pool);
       
@@ -1595,14 +1625,20 @@ class StorageWrapper implements IStorage {
     if (!this.pgStorage) return;
     
     try {
-      // Simple query to test if the database is accessible
-      const result = await this.pgStorage.testConnection();
+      // More thorough connection test
+      const result = await this.pool.query('SELECT NOW() as now');
       
-      if (result) {
-        console.log('PostgreSQL connection test successful, using database storage');
+      if (result && result.rows && result.rows.length > 0) {
+        console.log('PostgreSQL connection verified and working');
         this.useMemory = false;
         this.persistentStorageInitialized = true;
         this.reconnectAttempts = 0;
+        
+        // Set up connection error handler
+        this.pool.on('error', async (err) => {
+          console.error('Unexpected database error, attempting recovery:', err);
+          await this.handleConnectionError();
+        });
         
         // If we were previously using memory storage, sync any new data to the database
         if (this.useMemory) {
