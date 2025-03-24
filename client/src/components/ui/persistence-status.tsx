@@ -76,7 +76,7 @@ export default function PersistenceStatus() {
   // Determine status color and text
   let statusColor: 'green' | 'yellow' | 'red' = 'red';
   let statusText = 'Not Persistent';
-  let tooltip = 'Your data will be lost when the application is restarted or deployed';
+  let tooltip = 'Your data will be lost when the application is restarted or deployed. For production deployments, add DATABASE_URL and other required secrets in the Deployment settings under the "Secrets" tab.';
   
   if (status.connected && status.sessionPersistence) {
     statusColor = 'green';
@@ -85,7 +85,7 @@ export default function PersistenceStatus() {
   } else if (status.connected) {
     statusColor = 'yellow';
     statusText = 'Partial Persistence';
-    tooltip = 'Database connected but session persistence may not be working properly';
+    tooltip = 'Database connected but session persistence may not be working properly. The application will attempt to create the session table automatically.';
   }
   
   return (
