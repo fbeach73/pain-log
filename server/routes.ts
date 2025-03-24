@@ -159,6 +159,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Received medication data:", JSON.stringify(req.body, null, 2));
       
+      // Verify we have the required fields
+      if (!req.body.name || req.body.name.trim() === '') {
+        return res.status(400).json({ message: "Medication name is required" });
+      }
+      
       // Process timeOfDay to ensure it's always a proper array
       let timeOfDay: string[] = [];
       
@@ -198,12 +203,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // If timeOfDay is empty after all processing, set a default
+      if (timeOfDay.length === 0) {
+        timeOfDay = ["Morning"];
+        console.log("Using default 'Morning' for timeOfDay");
+      }
+      
       console.log("Processed timeOfDay array:", timeOfDay);
       
       // Create a clean medication data object
       const medicationData = {
         userId: userId,
-        name: req.body.name ? req.body.name.trim() : '',
+        name: req.body.name.trim(),
         dosage: req.body.dosage || null,
         frequency: req.body.frequency || null,
         timeOfDay: timeOfDay,
@@ -212,17 +223,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Creating medication with processed data:", JSON.stringify(medicationData, null, 2));
       
-      // Validate the data using schema
-      const validatedData = insertMedicationSchema.parse(medicationData);
-      const medication = await storage.createMedication(validatedData);
-      console.log("Medication created successfully:", medication);
-      
-      res.status(201).json(medication);
+      try {
+        // Validate the data using schema
+        const validatedData = insertMedicationSchema.parse(medicationData);
+        const medication = await storage.createMedication(validatedData);
+        console.log("Medication created successfully:", medication);
+        
+        res.status(201).json(medication);
+      } catch (validationError) {
+        console.error("Validation error:", validationError);
+        if (validationError instanceof z.ZodError) {
+          return res.status(400).json({ message: validationError.message });
+        }
+        throw validationError; // Re-throw if it's not a Zod error
+      }
     } catch (error) {
       console.error("Error creating medication:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.message });
-      }
       res.status(500).json({ message: "Failed to create medication" });
     }
   });

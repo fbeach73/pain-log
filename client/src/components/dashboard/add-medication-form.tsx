@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -25,6 +25,7 @@ import {
   DialogClose
 } from "@/components/ui/dialog";
 import { Loader2, X } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const medicationSchema = insertMedicationSchema.extend({
   timeOfDay: z.array(z.string()).min(1, "At least one time of day is required")
@@ -39,7 +40,21 @@ type AddMedicationFormProps = {
 
 export default function AddMedicationForm({ isOpen, onClose }: AddMedicationFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [times, setTimes] = useState<string[]>(['Morning']);
+  
+  // Reset the form when the dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimes(['Morning']);
+      form.reset({
+        name: "",
+        dosage: "",
+        frequency: "Daily",
+        timeOfDay: ["Morning"]
+      });
+    }
+  }, [isOpen]);
   
   const form = useForm<MedicationFormValues>({
     resolver: zodResolver(medicationSchema),
@@ -57,10 +72,10 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
       try {
         console.log("Adding medication with values:", JSON.stringify(values, null, 2));
         
-        // Create a clean copy of the values to send to the server
-        // Ensure timeOfDay is always a proper array
+        // Add the userId to the request data
         const requestData = {
           ...values,
+          userId: user?.id,
           timeOfDay: Array.isArray(values.timeOfDay) 
             ? values.timeOfDay.filter((item): item is string => 
                 typeof item === 'string' && item.trim() !== ''
@@ -73,6 +88,10 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
               : []
         };
         
+        if (!requestData.userId) {
+          throw new Error("User ID is required");
+        }
+        
         if (requestData.timeOfDay.length === 0) {
           throw new Error("At least one time of day is required");
         }
@@ -80,6 +99,10 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
         console.log("Sending cleaned medication data:", JSON.stringify(requestData, null, 2));
         
         const res = await apiRequest("POST", "/api/medications", requestData);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to add medication");
+        }
         const data = await res.json();
         console.log("Medication added response:", data);
         return data;
@@ -132,13 +155,16 @@ export default function AddMedicationForm({ isOpen, onClose }: AddMedicationForm
   };
   
   const addTime = () => {
-    setTimes([...times, '']);
+    const newTimes = [...times, ''];
+    setTimes(newTimes);
+    form.setValue("timeOfDay", newTimes);
   };
   
   const removeTime = (index: number) => {
     const newTimes = [...times];
     newTimes.splice(index, 1);
     setTimes(newTimes);
+    form.setValue("timeOfDay", newTimes);
   };
   
   const updateTime = (index: number, value: string) => {
