@@ -382,14 +382,14 @@ export default function PainForm() {
                       variant="outline"
                       className={`justify-between ${
                         selectedLocations.includes(location)
-                          ? "border-primary-300 bg-primary-50 hover:bg-primary-100"
+                          ? "border-green-300 bg-green-50/50 hover:bg-green-100/70 text-green-800"
                           : ""
                       }`}
                       onClick={() => toggleLocation(location)}
                     >
                       <span>{location}</span>
                       {selectedLocations.includes(location) && (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       )}
@@ -412,7 +412,7 @@ export default function PainForm() {
                       size="sm"
                       className={`rounded-full ${
                         selectedCharacteristics.includes(characteristic)
-                          ? "bg-primary-100 text-primary-700 hover:bg-primary-200"
+                          ? "bg-green-50/50 text-green-800 border-green-300 hover:bg-green-100/70"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                       onClick={() => toggleCharacteristic(characteristic)}
@@ -437,7 +437,7 @@ export default function PainForm() {
                       size="sm"
                       className={`rounded-full ${
                         selectedTriggers.includes(trigger)
-                          ? "bg-primary-100 text-primary-700 hover:bg-primary-200"
+                          ? "bg-green-50/50 text-green-800 border-green-300 hover:bg-green-100/70"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                       onClick={() => toggleTrigger(trigger)}
