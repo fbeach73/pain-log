@@ -66,7 +66,8 @@ export function setupAuth(app: Express) {
       pool, // Pass the PostgreSQL pool
       tableName: 'session', // Table name to use for sessions
       createTableIfMissing: true, // Create the table if it doesn't exist
-      pruneSessionInterval: 60 * 60 // Prune expired sessions every hour (in seconds)
+      pruneSessionInterval: 60 * 60, // Prune expired sessions every hour (in seconds)
+      errorLog: console.error // Log any errors to the console
     });
   } else {
     // Fallback to memory store if no database connection

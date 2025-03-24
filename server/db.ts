@@ -92,6 +92,60 @@ const initializeDatabaseConnection = () => {
   }
 };
 
+// Create a function to explicitly check and create the session table
+export async function ensureSessionTableExists(): Promise<boolean> {
+  if (!pool) {
+    console.error("Cannot ensure session table exists - no database connection");
+    return false;
+  }
+  
+  try {
+    // Check if the session table exists
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'session'
+      );
+    `);
+    
+    const tableExists = result.rows[0].exists;
+    
+    if (!tableExists) {
+      console.log("Session table does not exist, creating it now...");
+      
+      // Create the session table with the schema expected by connect-pg-simple
+      await pool.query(`
+        CREATE TABLE "session" (
+          "sid" varchar NOT NULL COLLATE "default",
+          "sess" json NOT NULL,
+          "expire" timestamp(6) NOT NULL,
+          CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+        );
+        CREATE INDEX "IDX_session_expire" ON "session" ("expire");
+      `);
+      
+      console.log("Session table created successfully");
+      return true;
+    }
+    
+    console.log("Session table already exists");
+    return true;
+  } catch (error) {
+    console.error("Error ensuring session table exists:", error);
+    return false;
+  }
+}
+
 // Export the pool and db instances
 const { pool, db } = initializeDatabaseConnection();
 export { pool, db };
+
+// Initialize the session table asynchronously
+ensureSessionTableExists().then(success => {
+  if (success) {
+    console.log("Session table check/creation completed");
+  } else {
+    console.warn("WARNING: Session table could not be verified - sessions may not persist");
+  }
+});
