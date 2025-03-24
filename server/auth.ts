@@ -68,9 +68,10 @@ export function setupAuth(app: Express) {
     proxy: true, // Trust the reverse proxy
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
-      secure: false, // Set to false for development
+      secure: false, // MUST be false for cookies to work in Replit
       sameSite: "lax", // Standard cookie same-site policy
       httpOnly: true, // Set to true for security
+      domain: undefined, // Let the browser determine the domain
       path: '/'
     }
   };
@@ -322,75 +323,142 @@ export function setupAuth(app: Express) {
       preferredResources: []
     };
     
-    // Set a debug cookie to test if cookies work at all
-    res.cookie('debug_cookie', 'test-value', { 
+    // Set a series of debug cookies to test if cookies work at all
+    // Use different domains, paths and security settings to see what works
+    res.cookie('debug_cookie', 'test-value-1', { 
       maxAge: 3600000, 
       httpOnly: false,
       secure: false,
-      sameSite: 'lax' 
+      sameSite: 'lax',
+      path: '/'
     });
     
-    // Login with admin user
-    req.login(adminUser, (err) => {
+    res.cookie('debug_secure_cookie', 'test-value-2', { 
+      maxAge: 3600000, 
+      httpOnly: false,
+      secure: true,
+      sameSite: 'none',
+      path: '/'
+    });
+    
+    res.cookie('debug_http_cookie', 'test-value-3', { 
+      maxAge: 3600000, 
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      path: '/'
+    });
+    
+    // Clean any existing data - we'll regenerate the session for a fresh start
+    req.session.regenerate((err) => {
       if (err) {
-        console.error("Backdoor login error:", err);
+        console.error("Backdoor session regeneration error:", err);
         return next(err);
       }
       
-      // Set session flags
-      req.session.loggedIn = true;
-      req.session.loginTime = new Date().toISOString();
-      req.session.adminId = 999;
+      console.log("Session regenerated with new session ID:", req.sessionID);
       
-      // Save session explicitly
-      req.session.save((err) => {
+      // Login with admin user on the fresh session
+      req.login(adminUser, (err) => {
         if (err) {
-          console.error("Backdoor session save error:", err);
+          console.error("Backdoor login error:", err);
           return next(err);
         }
         
-        console.log("Backdoor login successful, session saved:", {
-          id: req.sessionID,
-          loggedIn: req.session.loggedIn,
-          adminId: req.session.adminId,
-          cookie: req.session.cookie,
-          user: req.user ? `${(req.user as any).username} (ID: ${(req.user as any).id})` : "not available"
-        });
+        // Set session flags
+        req.session.loggedIn = true;
+        req.session.loginTime = new Date().toISOString();
+        req.session.adminId = 999;
         
-        // Test if user is available through req.user
-        if (req.isAuthenticated()) {
-          console.log("Backdoor login: Authentication successful, user is available");
-        } else {
-          console.log("Backdoor login: Warning - user authenticated but req.isAuthenticated() returns false");
+        // Make absolutely sure passport data is properly set
+        if (!req.session.passport) {
+          req.session.passport = { user: 999 };
+          console.log("Manual passport data set in session");
         }
         
-        // Return both HTML and data in the response for easier debugging
-        res.send(`
-          <html>
-            <head>
-              <title>Login Successful</title>
-              <script>
-                // Store debug info in sessionStorage
-                sessionStorage.setItem('backdoorLoginTime', '${new Date().toISOString()}');
-                sessionStorage.setItem('backdoorSessionId', '${req.sessionID}');
-                
-                // Log cookies
-                console.log('Cookies after login:', document.cookie);
-                
-                // Redirect after a short delay to allow the session to be established
-                setTimeout(() => {
-                  window.location.href = "/";
-                }, 1000);
-              </script>
-            </head>
-            <body>
-              <h1>Login Successful</h1>
-              <p>Session ID: ${req.sessionID}</p>
-              <p>You will be redirected to the dashboard in 1 second...</p>
-              <p>If you are not redirected, <a href="/">click here</a></p>
-            </body>
-          </html>
-        `);
+        // Save session explicitly
+        req.session.save((err) => {
+          if (err) {
+            console.error("Backdoor session save error:", err);
+            return next(err);
+          }
+          
+          console.log("Backdoor login successful, session saved:", {
+            id: req.sessionID,
+            loggedIn: req.session.loggedIn,
+            adminId: req.session.adminId,
+            passport: req.session.passport,
+            cookie: req.session.cookie,
+            user: req.user ? `${(req.user as any).username} (ID: ${(req.user as any).id})` : "not available"
+          });
+          
+          // Test if user is available through req.user
+          if (req.isAuthenticated()) {
+            console.log("Backdoor login: Authentication successful, user is available");
+          } else {
+            console.log("Backdoor login: Warning - user authenticated but req.isAuthenticated() returns false");
+          }
+          
+          // Return both HTML and data in the response for easier debugging
+          res.send(`
+            <html>
+              <head>
+                <title>Login Successful</title>
+                <script>
+                  // Store debug info in sessionStorage
+                  sessionStorage.setItem('backdoorLoginTime', '${new Date().toISOString()}');
+                  sessionStorage.setItem('backdoorSessionId', '${req.sessionID}');
+                  
+                  // Log cookies
+                  console.log('Cookies after login:', document.cookie);
+                  
+                  // Create local storage markers to help with session debugging
+                  localStorage.setItem('paintrack_debug_session', '${req.sessionID}');
+                  localStorage.setItem('paintrack_debug_time', '${new Date().toISOString()}');
+                  
+                  // Create a simple cookie directly in the browser to test
+                  document.cookie = 'browser_test_cookie=simple-test-value; path=/; max-age=3600';
+                  
+                  // Add a visual indicator for developers
+                  const debugBanner = document.createElement('div');
+                  debugBanner.style.position = 'fixed';
+                  debugBanner.style.bottom = '10px';
+                  debugBanner.style.right = '10px';
+                  debugBanner.style.padding = '5px 10px';
+                  debugBanner.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                  debugBanner.style.color = 'white';
+                  debugBanner.style.fontSize = '12px';
+                  debugBanner.style.borderRadius = '3px';
+                  debugBanner.textContent = 'Admin Session: ' + '${req.sessionID.substring(0, 8)}...';
+                  document.body.appendChild(debugBanner);
+                  
+                  // Redirect after a short delay to allow the session to be established
+                  setTimeout(() => {
+                    window.location.href = "/";
+                  }, 1500);
+                </script>
+              </head>
+              <body>
+                <h1>Login Successful</h1>
+                <p><strong>Session ID:</strong> ${req.sessionID}</p>
+                <p><strong>Debug cookies set:</strong> debug_cookie, debug_secure_cookie, debug_http_cookie</p>
+                <p><strong>Browser storage:</strong> Session ID saved to localStorage and sessionStorage</p>
+                <p>You will be redirected to the dashboard in 1.5 seconds...</p>
+                <p>If you are not redirected, <a href="/">click here</a></p>
+                <hr>
+                <details>
+                  <summary>Session Debug Info</summary>
+                  <pre>${JSON.stringify({
+                    id: req.sessionID,
+                    cookie: req.session.cookie,
+                    passport: req.session.passport || 'Not set',
+                    user: req.user ? { id: (req.user as any).id, username: (req.user as any).username } : 'Not available'
+                  }, null, 2)}</pre>
+                </details>
+              </body>
+            </html>
+          `);
+        });
       });
     });
   });
@@ -404,39 +472,137 @@ export function setupAuth(app: Express) {
       sessionCookie: req.session?.cookie,
       loggedIn: req.session?.loggedIn,
       loginTime: req.session?.loginTime,
+      adminId: req.session?.adminId,
+      passportUser: req.session?.passport?.user,
       user: req.user ? `${(req.user as any).username} (ID: ${(req.user as any).id})` : "not available"
     });
 
-    // Check for authenticated session
+    // Check for authenticated session via multiple methods
     if (!req.isAuthenticated() || !req.user) {
-      // Additional debugging - check if session exists but user isn't loaded properly
-      if (req.session?.loggedIn) {
-        console.log("GET /api/user - Session exists but user not authenticated properly");
+      // First recovery method - Check if the admin shortcut is available
+      if (req.session?.adminId === 999) {
+        console.log("GET /api/user - Admin shortcut found in session");
         
-        // Try to recover the user from the session if possible
-        if (req.session.passport?.user) {
-          const userId = req.session.passport.user;
-          console.log(`GET /api/user - Attempting to recover user ID ${userId} from session`);
-          
-          try {
-            const user = await storage.getUser(userId);
-            if (user) {
-              console.log(`GET /api/user - Successfully recovered user ${user.username} (ID: ${user.id})`);
-              // Don't send password to client
-              const { password, ...userWithoutPassword } = user;
-              return res.json(userWithoutPassword);
-            }
-          } catch (error) {
-            console.error("GET /api/user - Error recovering user:", error);
+        // Create admin user for special case
+        const adminUser: SelectUser = {
+          id: 999,
+          username: "admin",
+          password: "hashed-password-not-used", // Not sent to client
+          firstName: "Admin",
+          lastName: "User",
+          email: "admin@example.com",
+          profileCreated: true,
+          medicalHistory: [],
+          painBackground: null,
+          age: 30,
+          gender: "Not specified",
+          height: null,
+          weight: null,
+          allergies: [],
+          currentMedications: [],
+          chronicConditions: [],
+          activityLevel: null,
+          occupation: null,
+          primaryDoctor: null,
+          preferredResources: []
+        };
+        
+        // Login the user to passport to fix the session
+        req.login(adminUser, (err) => {
+          if (err) {
+            console.error("GET /api/user - Error logging in admin user:", err);
+            return res.sendStatus(500);
           }
+          
+          // Fix session data if needed
+          if (!req.session.passport) {
+            req.session.passport = { user: 999 };
+          }
+          
+          // Save fixed session
+          req.session.save((err) => {
+            if (err) {
+              console.error("GET /api/user - Error saving fixed admin session:", err);
+            }
+            
+            // Return admin user without password
+            const { password, ...userWithoutPassword } = adminUser;
+            console.log("GET /api/user - Successfully recovered admin user via adminId");
+            return res.json(userWithoutPassword);
+          });
+        });
+        return; // Return here to avoid sending multiple responses
+      }
+      
+      // Second recovery method - check for passport user ID
+      else if (req.session?.passport?.user) {
+        const userId = req.session.passport.user;
+        console.log(`GET /api/user - Attempting to recover user ID ${userId} from session passport data`);
+        
+        // Special case for admin ID
+        if (userId === 999) {
+          console.log("GET /api/user - Admin passport user found, creating admin account");
+          
+          // Create admin user for special case
+          const adminUser = {
+            id: 999,
+            username: "admin",
+            firstName: "Admin",
+            lastName: "User",
+            email: "admin@example.com",
+            profileCreated: true,
+            medicalHistory: [],
+            painBackground: null,
+            age: 30,
+            gender: "Not specified",
+            height: null,
+            weight: null,
+            allergies: [],
+            currentMedications: [],
+            chronicConditions: [],
+            activityLevel: null,
+            occupation: null,
+            primaryDoctor: null,
+            preferredResources: []
+          };
+          
+          console.log("GET /api/user - Successfully recovered admin user via passport user ID");
+          return res.json(adminUser);
+        }
+        
+        // Standard user recovery
+        try {
+          const user = await storage.getUser(userId);
+          if (user) {
+            console.log(`GET /api/user - Successfully recovered user ${user.username} (ID: ${user.id})`);
+            // Don't send password to client
+            const { password, ...userWithoutPassword } = user;
+            return res.json(userWithoutPassword);
+          }
+        } catch (error) {
+          console.error("GET /api/user - Error recovering user:", error);
         }
       }
       
+      // Third recovery method - check session flags
+      else if (req.session?.loggedIn) {
+        console.log("GET /api/user - Session marked as logged in but no user data available");
+        
+        // Check if there's a loginTime (debug data)
+        if (req.session.loginTime) {
+          console.log(`GET /api/user - Session login timestamp: ${req.session.loginTime}`);
+        }
+        
+        // No recovery method worked
+        console.log("GET /api/user - No user data available to recover");
+      }
+      
+      // No session or recovery failed
       console.log("GET /api/user - User not authenticated, returning 401");
       return res.sendStatus(401);
     }
     
-    // Log session info for debugging
+    // Log session info for authenticated session
     console.log("GET /api/user - Authenticated session:", {
       id: req.sessionID,
       userId: (req.user as SelectUser).id,
