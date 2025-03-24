@@ -663,6 +663,11 @@ export class PostgresStorage implements IStorage {
     }
   }
 
+  getMedicationTakenStatus(medicationId: number, doseIndex: number): boolean {
+    // For PostgreSQL, we're using the memFallback to track medication status
+    return this.memFallback.getMedicationTakenStatus(medicationId, doseIndex);
+  }
+
   async getTodayMedications(userId: number): Promise<MedicationWithStatus[]> {
     try {
       const meds = await this.getMedicationsByUserId(userId);
@@ -673,10 +678,7 @@ export class PostgresStorage implements IStorage {
         const timeOfDay = med.timeOfDay || [];
         // Check if each medication dose has been taken today
         const takenToday = timeOfDay.map((_, index) => {
-          const key = `${med.id}-${today}-${index}`;
-          // We use the MemStorage's getTodayMedications with a mock medication to check
-          // since we can't access the private medicationTaken map directly
-          return this.memFallback.getMedicationTakenStatus(med.id, index);
+          return this.getMedicationTakenStatus(med.id, index);
         });
         
         return {
@@ -1298,6 +1300,12 @@ class MemStorage implements IStorage {
       .filter(med => med.userId === userId && med.active);
   }
 
+  getMedicationTakenStatus(medicationId: number, doseIndex: number): boolean {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const key = `${medicationId}-${today}-${doseIndex}`;
+    return this.medicationTaken.get(key) || false;
+  }
+
   async getTodayMedications(userId: number): Promise<MedicationWithStatus[]> {
     const meds = await this.getMedicationsByUserId(userId);
     const today = format(new Date(), "yyyy-MM-dd");
@@ -1305,8 +1313,7 @@ class MemStorage implements IStorage {
     return meds.map(med => {
       const timeOfDay = med.timeOfDay as string[];
       const takenToday = timeOfDay ? timeOfDay.map((_, index) => {
-        const key = `${med.id}-${today}-${index}`;
-        return this.medicationTaken.get(key) || false;
+        return this.getMedicationTakenStatus(med.id, index);
       }) : [];
       
       return {
@@ -1737,6 +1744,10 @@ class StorageWrapper implements IStorage {
   
   async getTodayMedications(userId: number): Promise<MedicationWithStatus[]> {
     return this.getStorage().getTodayMedications(userId);
+  }
+  
+  getMedicationTakenStatus(medicationId: number, doseIndex: number): boolean {
+    return this.getStorage().getMedicationTakenStatus(medicationId, doseIndex);
   }
   
   async takeMedication(medicationId: number, doseIndex: number): Promise<any> {
