@@ -2,8 +2,25 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorMessage = res.statusText;
+    
+    try {
+      // Try to parse error as JSON first
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorJson = await res.json();
+        errorMessage = errorJson.message || errorJson.error || JSON.stringify(errorJson);
+      } else {
+        // Fallback to text if not JSON
+        const text = await res.text();
+        if (text) errorMessage = text;
+      }
+    } catch (e) {
+      // If error parsing fails, use status text
+      console.warn('Error parsing error response:', e);
+    }
+    
+    throw new Error(`${res.status}: ${errorMessage}`);
   }
 }
 
@@ -83,11 +100,35 @@ export const queryClient = new QueryClient({
       refetchOnMount: true, // Always refetch when component mounts
       refetchOnReconnect: true, // Refetch when reconnecting
       staleTime: 0, // Consider data stale immediately for authentication queries
-      retry: 2, // Try twice more on failure
+      retry: (failureCount, error) => {
+        // Don't retry on 401, 403 or 404 status
+        if (
+          error instanceof Error && 
+          error.message.startsWith('401:') || 
+          error.message.startsWith('403:') || 
+          error.message.startsWith('404:')
+        ) {
+          return false;
+        }
+        // Only retry 3 times max
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
       gcTime: 10 * 60 * 1000 // 10 minutes
     },
     mutations: {
-      retry: 2, // Try twice more on failure
+      retry: (failureCount, error) => {
+        // Only retry non-client (4xx) errors
+        if (
+          error instanceof Error && 
+          /^4\d\d:/.test(error.message)
+        ) {
+          return false;
+        }
+        // Only retry 2 times max
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff
     },
   },
 });

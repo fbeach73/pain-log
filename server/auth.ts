@@ -81,14 +81,14 @@ export function setupAuth(app: Express) {
   // Use dedicated PostgreSQL store for sessions when available
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
-    resave: true, // Save session on every request to ensure it persists
-    saveUninitialized: true, // Create session before anything is stored (for better compatibility)
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something stored
     store: sessionStore, // Use our PostgreSQL store or fallback to memory store
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
     cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days to reduce stale sessions
       secure: false, // MUST be false for cookies to work in Replit
       sameSite: "lax", // Standard cookie same-site policy
       httpOnly: true, // Set to true for security
@@ -124,15 +124,23 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: number, done) => {
     try {
       // Normal user
+      // Check if id is a valid number that could be a user ID
+      if (!id || id === 999 || isNaN(id) || id <= 0) {
+        console.log(`Deserialize skipped - invalid user ID ${id}`);
+        return done(null, false);
+      }
+      
       const user = await storage.getUser(id);
       if (!user) {
         console.log(`Deserialize failed - no user found with ID ${id}`);
-        return done(new Error(`No user found with ID ${id}`));
+        // Return false instead of error to prevent application crashes
+        return done(null, false);
       }
       done(null, user);
     } catch (error) {
       console.error("Error deserializing user:", error);
-      done(error);
+      // Return false instead of error to prevent application crashes
+      done(null, false);
     }
   });
 
@@ -256,12 +264,27 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated() || !req.user) {
-      return res.sendStatus(401);
+    try {
+      // Check if the request is authenticated with valid session
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
+      
+      // Check if user object exists in the request
+      if (!req.user) {
+        console.log("User endpoint: authenticated but no user object found");
+        return res.sendStatus(401);
+      }
+      
+      // Log successful user data fetch
+      console.log(`User data fetched for user ID: ${req.user.id}`);
+      
+      // Don't send password to client
+      const { password, ...userWithoutPassword } = req.user as SelectUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error in /api/user endpoint:", error);
+      res.status(500).json({ message: "Server error fetching user data" });
     }
-    
-    // Don't send password to client
-    const { password, ...userWithoutPassword } = req.user as SelectUser;
-    res.json(userWithoutPassword);
   });
 }
