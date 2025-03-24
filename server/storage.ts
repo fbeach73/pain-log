@@ -1238,11 +1238,37 @@ class MemStorage implements IStorage {
     let timeOfDayArray: string[] | null = null;
     if (medication.timeOfDay) {
       if (Array.isArray(medication.timeOfDay)) {
-        timeOfDayArray = medication.timeOfDay;
-      } else {
-        console.log("Converting non-array timeOfDay to array:", medication.timeOfDay);
-        timeOfDayArray = Object.values(medication.timeOfDay);
+        timeOfDayArray = [...medication.timeOfDay].filter(
+          (time): time is string => typeof time === 'string' && time.trim() !== ''
+        );
+      } else if (typeof medication.timeOfDay === 'object') {
+        console.log("Converting object timeOfDay to array:", medication.timeOfDay);
+        timeOfDayArray = Object.values(medication.timeOfDay).filter(
+          (time): time is string => typeof time === 'string' && time.trim() !== ''
+        );
+      } else if (typeof medication.timeOfDay === 'string') {
+        try {
+          const parsed = JSON.parse(medication.timeOfDay);
+          if (Array.isArray(parsed)) {
+            timeOfDayArray = parsed.filter(
+              (time): time is string => typeof time === 'string' && time.trim() !== ''
+            );
+          } else if (typeof parsed === 'object') {
+            timeOfDayArray = Object.values(parsed).filter(
+              (time): time is string => typeof time === 'string' && time.trim() !== ''
+            );
+          }
+        } catch (e) {
+          // If parsing fails, treat it as a single item array
+          timeOfDayArray = [medication.timeOfDay];
+        }
       }
+    }
+    
+    // If timeOfDayArray is empty after filtering, set it to default
+    if (!timeOfDayArray || timeOfDayArray.length === 0) {
+      timeOfDayArray = ["Morning"];
+      console.log("Setting default timeOfDay to:", timeOfDayArray);
     }
     
     const newMedication: Medication = {
