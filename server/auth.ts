@@ -61,7 +61,7 @@ export function setupAuth(app: Express) {
     secret: sessionSecret,
     resave: true, // Save session on every request to ensure it persists
     saveUninitialized: true, // Create session before anything is stored (for better compatibility)
-    store: memoryStore, // Use our direct memory store instead of storage.sessionStore
+    store: storage.sessionStore, // Use the PostgreSQL session store from storage
     name: 'paintrack.sid', // Customized cookie name
     rolling: true, // Reset expiration on each request
     proxy: true, // Trust the reverse proxy
