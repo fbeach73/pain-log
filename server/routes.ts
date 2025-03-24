@@ -20,46 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok", time: new Date() });
   });
   
-  // Database status endpoint (public) for checking persistence
-  app.get("/api/system/database-status", async (req, res) => {
-    // Check if DATABASE_URL is set
-    const hasDbUrl = checkDatabaseUrl();
-    
-    // Attempt a database health check
-    let dbStatus = {
-      configured: hasDbUrl,
-      connected: false,
-      error: null as string | null,
-      sessionPersistence: false,
-      time: new Date()
-    };
-    
-    // Only test connection if DB is configured
-    if (hasDbUrl && pool) {
-      try {
-        // Query the database to check connection
-        const result = await pool.query('SELECT NOW() as time');
-        dbStatus.connected = true;
-        dbStatus.sessionPersistence = true;
-        
-        // Check for session table
-        try {
-          await pool.query('SELECT 1 FROM session LIMIT 1');
-        } catch (error) {
-          // Session table doesn't exist yet - still connected, but sessions might not persist
-          dbStatus.sessionPersistence = false;
-          dbStatus.error = "Database connected but session table not found - sessions may not persist";
-        }
-      } catch (error) {
-        // Connection failed
-        dbStatus.error = error instanceof Error ? error.message : "Unknown database connection error";
-      }
-    } else {
-      dbStatus.error = "DATABASE_URL environment variable is missing or invalid";
-    }
-    
-    res.json(dbStatus);
-  });
+  // Only providing a basic health check endpoint for the production build
   
   // Set up authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);

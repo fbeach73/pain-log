@@ -73,17 +73,7 @@ export default function AuthPage() {
     }
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
-  // Function to use admin login for testing
-  const useTestAccount = () => {
-    console.log("Auth page: Using test account login...");
-    
-    // Directly log in with the admin credentials using the login mutation
-    loginForm.setValue("username", "admin");
-    loginForm.setValue("password", "admin123");
-    
-    // Submit the form programmatically
-    loginForm.handleSubmit(onLoginSubmit)();
-  };
+
 
   // Attempt to recover session on auth page load
   useEffect(() => {
@@ -182,22 +172,9 @@ export default function AuthPage() {
                         Sign In
                       </Button>
                       <div className="mt-4 pt-4 border-t text-center">
-                        <p className="text-sm text-muted-foreground mb-2">For testing purposes:</p>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          className="w-full mb-2" 
-                          onClick={useTestAccount}
-                        >
-                          Use Test Account
-                        </Button>
-                        <p className="text-xs text-muted-foreground mb-1">Having trouble logging in?</p>
-                        <a 
-                          href="/api/backdoor-login" 
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Click here for direct admin login
-                        </a>
+                        <p className="text-xs text-muted-foreground">
+                          Don't have an account? Use the Register tab to create one.
+                        </p>
                       </div>
                     </form>
                   </Form>
