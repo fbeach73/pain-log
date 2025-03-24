@@ -7,6 +7,7 @@ import {
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { format } from "date-fns";
+import { pool, db, checkDatabaseUrl } from "./db";
 
 // Define types for analytics and stats
 type TriggerStat = {
@@ -117,51 +118,17 @@ export class PostgresStorage implements IStorage {
     this.memFallback = new MemStorage();
     
     try {
-      if (!process.env.DATABASE_URL) {
-        throw new Error("DATABASE_URL not found in environment");
+      // Check if DATABASE_URL is available and the pool and db were initialized
+      if (!checkDatabaseUrl() || !pool || !db) {
+        console.log("PostgreSQL connection not available, using in-memory storage");
+        this.connectionFailed = true;
+        this.sessionStore = this.memFallback.sessionStore;
+        return;
       }
       
-      // Configure PostgreSQL with better options for Replit
-      this.pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        // Add additional options to improve connection reliability
-        ssl: {
-          rejectUnauthorized: false  // Accept self-signed certificates
-        },
-        max: 5,                      // Maximum number of clients in the pool
-        idleTimeoutMillis: 30000,    // Close idle clients after 30 seconds
-        connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection couldn't be established
-      });
-      this.db = drizzle(this.pool);
-      
-      // Add error handler for the connection pool
-      this.pool.on('error', (err) => {
-        console.error('Unexpected PostgreSQL pool error:', err);
-        // Don't mark as failed here - we'll try to recover
-      });
-      
-      // Test the connection but don't throw an error if it fails
-      // This allows the app to use PostgreSQL when it's working but gracefully handle failures
-      this.pool.query('SELECT 1')
-        .then(() => {
-          console.log('Successfully connected to PostgreSQL database');
-          this.connectionFailed = false;
-        })
-        .catch((err) => {
-          console.error('Warning: PostgreSQL connection test failed:', err);
-          this.connectionFailed = true;
-          // Try again after a delay
-          setTimeout(() => {
-            this.pool.query('SELECT 1')
-              .then(() => {
-                console.log('PostgreSQL connection recovered');
-                this.connectionFailed = false;
-              })
-              .catch((retryErr) => {
-                console.error('PostgreSQL connection retry failed:', retryErr);
-              });
-          }, 5000);
-        });
+      // Use the pool and db from the db.ts module
+      this.pool = pool;
+      this.db = db;
       
       // Use PostgreSQL for session storage with fallback to memory store
       try {
@@ -192,11 +159,18 @@ export class PostgresStorage implements IStorage {
         this.sessionStore = this.memFallback.sessionStore;
       }
       
-      // Initialize database tables if needed
-      this.initializeDatabase();
+      // Test the connection but don't throw an error if it fails
+      this.testConnection()
+        .then((success) => {
+          if (success) {
+            console.log('Storage initialized with PostgreSQL and MemStorage fallback');
+            this.connectionFailed = false;
+          } else {
+            console.error('PostgreSQL connection test failed, using in-memory storage');
+            this.connectionFailed = true;
+          }
+        });
       
-      // Log to confirm initialization
-      console.log('Storage initialized with PostgreSQL and MemStorage fallback');
     } catch (error) {
       console.error('Failed to initialize PostgreSQL storage, using MemStorage instead:', error);
       this.connectionFailed = true;
@@ -1565,7 +1539,7 @@ class StorageWrapper implements IStorage {
     // Use memory store for session by default (will be replaced if PG connection succeeds)
     this.sessionStore = this.memStorage.sessionStore;
     
-    if (!process.env.DATABASE_URL) {
+    if (!checkDatabaseUrl()) {
       console.error('No DATABASE_URL provided, PERSISTENCE WILL NOT WORK! Please add the DATABASE_URL environment variable.');
       this.useMemory = true;
       return;
