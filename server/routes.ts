@@ -9,6 +9,7 @@ import { PainTrendData } from "../client/src/types/pain";
 import { format, subDays } from "date-fns";
 import { generatePainLogPDF } from "./utils/pdf-generator";
 import { initializeEmailService, sendEmailWithAttachment } from "./utils/email-service";
+import { WordPressAPI } from "./services/wordpress-api";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize email service
