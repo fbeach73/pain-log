@@ -116,13 +116,10 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <div className="flex justify-center mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 11l3 3 3-3" />
-              </svg>
+              <span className="material-symbols-outlined text-5xl text-primary">health_metrics</span>
             </div>
-            <h1 className="text-3xl font-bold">PainClinics.com <span className="text-primary">PainTracker</span></h1>
-            <p className="text-slate-600 mt-2">Track, Analyze and Manage Your Pain</p>
+            <h1 className="text-3xl font-bold">Pain Tracking <span className="text-primary">APP</span></h1>
+            <p className="text-slate-600 mt-2">Track, Analyze and Manage Your Pain With A Free App From Painclinics.com</p>
           </div>
 
           <Tabs defaultValue="login" className="w-full">
