@@ -1,7 +1,7 @@
 
 import axios from 'axios';
 
-const WP_API_BASE = process.env.WP_API_URL || 'https://painclinics.com/wp-json';
+const WP_API_BASE = process.env.WP_API_URL || 'https://wordpress-1356334-5217933.cloudwaysapps.com/wp-json';
 
 export class WordPressAPI {
   private static instance: WordPressAPI;
