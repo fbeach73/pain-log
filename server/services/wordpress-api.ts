@@ -1,17 +1,9 @@
-
 import axios from 'axios';
-
-const WP_API_BASE = process.env.WP_API_URL || 'https://wordpress-1356334-5217933.cloudwaysapps.com/wp-json';
 
 export class WordPressAPI {
   private static instance: WordPressAPI;
-  private baseURL: string;
-  private apiKey: string;
-  
-  private constructor() {
-    this.baseURL = WP_API_BASE;
-    this.apiKey = process.env.WP_API_KEY || '';
-  }
+
+  private constructor() {}
 
   static getInstance(): WordPressAPI {
     if (!WordPressAPI.instance) {
@@ -20,49 +12,21 @@ export class WordPressAPI {
     return WordPressAPI.instance;
   }
 
-  async createSubscription(userId: string, planData: any) {
-    try {
-      const response = await axios.post(`${this.baseURL}/wc/v3/subscriptions`, {
-        ...planData,
-        customer_id: userId,
-        status: 'pending'
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('WordPress API Error:', error);
-      throw error;
-    }
-  }
-
-  async verifySubscription(subscriptionId: string) {
-    try {
-      const response = await axios.get(`${this.baseURL}/wc/v3/subscriptions/${subscriptionId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('WordPress API Error:', error);
-      throw error;
-    }
-  }
-
   async getSubscriptionPlans() {
     try {
-      const response = await axios.get(`https://wordpress-1356334-5217933.cloudwaysapps.com/wp-json/wc/v3/products`, {
+      const WP_API_URL = process.env.WP_API_URL;
+      const WP_API_KEY = process.env.WP_API_KEY;
+
+      if (!WP_API_URL || !WP_API_KEY) {
+        throw new Error('WordPress API configuration missing');
+      }
+
+      const response = await axios.get(`${WP_API_URL}/products`, {
         headers: {
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        params: {
-          type: 'subscription'
+          'Authorization': `Bearer ${WP_API_KEY}`
         }
       });
+
       return response.data;
     } catch (error) {
       console.error('WordPress API Error:', error);
