@@ -21,20 +21,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok", time: new Date() });
   });
 
-  app.get("/api/wordpress/test", async (req, res) => {
-    try {
-      const wpApi = WordPressAPI.getInstance();
-      const plans = await wpApi.getSubscriptionPlans();
-      res.json({ success: true, plans });
-    } catch (error) {
-      console.error('WordPress API test failed:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        note: 'Make sure WP_API_URL and WP_API_KEY secrets are set correctly'
-      });
-    }
-  });
+  // Removed WordPress API endpoint
   
   // Only providing a basic health check endpoint for the production build
   
