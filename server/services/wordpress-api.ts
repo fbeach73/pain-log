@@ -21,9 +21,10 @@ export class WordPressAPI {
         throw new Error('WordPress API configuration missing');
       }
 
-      const response = await axios.get(`${WP_API_URL}/products`, {
+      const response = await axios.get(`${WP_API_URL}/wc/v3/products`, {
         headers: {
-          'Authorization': `Bearer ${WP_API_KEY}`
+          'Authorization': `Bearer ${WP_API_KEY}`,
+          'Content-Type': 'application/json'
         }
       });
 
