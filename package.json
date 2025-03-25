@@ -65,6 +65,7 @@
     "memorystore": "^1.6.7",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.10.0",
+    "oauth-1.0a": "^2.2.6",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pdfkit": "^0.16.0",
