@@ -21,9 +21,12 @@ export class WordPressAPI {
         throw new Error('WordPress API configuration missing');
       }
 
+      // Convert API key to base64 for basic auth
+      const auth = Buffer.from(`${WP_API_KEY}`).toString('base64');
+      
       const response = await axios.get(`${WP_API_URL}/wc/v3/products`, {
         headers: {
-          'Authorization': `Bearer ${WP_API_KEY}`,
+          'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json'
         }
       });
