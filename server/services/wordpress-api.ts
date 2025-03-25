@@ -55,7 +55,7 @@ export class WordPressAPI {
 
   async getSubscriptionPlans() {
     try {
-      const response = await axios.get(`${this.baseURL}/wc/v3/products`, {
+      const response = await axios.get(`https://wordpress-1356334-5217933.cloudwaysapps.com/wp-json/wc/v3/products`, {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`
         },
