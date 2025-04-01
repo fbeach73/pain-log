@@ -146,21 +146,46 @@ export default function PainForm() {
             const result = await refetchUser();
             if (!result.data) {
               console.log("Refetch failed to get user data");
-              throw new Error("Session expired. Please log in again.");
+              // Redirect to login page with a better error message
+              toast({
+                title: "Login Required",
+                description: "Please log in to save your pain entries",
+                variant: "destructive",
+              });
+              setTimeout(() => navigate("/auth"), 1500);
+              throw new Error("You must be logged in to save pain entries.");
             }
           } else {
-            throw new Error("Authentication error. Please log in again.");
+            toast({
+              title: "Authentication Error",
+              description: "Please log in to continue",
+              variant: "destructive",
+            });
+            setTimeout(() => navigate("/auth"), 1500);
+            throw new Error("Authentication error. Please log in to continue.");
           }
         } catch (error) {
           console.error("Error refetching user:", error);
-          throw new Error("Your session may have expired. Please log in again.");
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Redirecting to login page...",
+            variant: "destructive",
+          });
+          setTimeout(() => navigate("/auth"), 1500);
+          throw new Error("Your session has expired. Please log in again.");
         }
       }
       
       // Double check we have user data before proceeding
       if (!user || !user.id) {
         console.error("No user ID available after refetch attempt");
-        throw new Error("Authentication error. Please refresh and try again.");
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to save your pain entries",
+          variant: "destructive",
+        });
+        setTimeout(() => navigate("/auth"), 1500);
+        throw new Error("You must be logged in to save pain entries.");
       }
       
       // Combine date and time into a Date object
@@ -346,6 +371,27 @@ export default function PainForm() {
         </Button>
         <h2 className="text-2xl font-semibold">Log Pain Entry</h2>
       </div>
+      
+      {/* Authentication Warning */}
+      {!user && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mt-0.5 mr-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <h3 className="font-medium text-amber-800 mb-1">Login Required</h3>
+            <p className="text-sm text-amber-700">You need to be logged in to save pain entries. Your data won't be saved without an account.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2 bg-white hover:bg-amber-50 text-amber-700 border-amber-300"
+              onClick={() => navigate("/auth")}
+            >
+              Log in or Register
+            </Button>
+          </div>
+        </div>
+      )}
       
       <Card className="mb-6">
         <CardContent className="p-6">
