@@ -1152,8 +1152,9 @@ class MemStorage implements IStorage {
   async getPatterns(userId: number): Promise<Pattern[]> {
     const entries = await this.getPainEntriesByUserId(userId);
     
-    // Only generate patterns if there are enough entries
-    if (entries.length < 5) {
+    // Generate patterns if there are enough entries
+    // Lower threshold to 2 entries to show patterns sooner
+    if (entries.length < 2) {
       return [];
     }
     

@@ -156,10 +156,12 @@ export default function PainForm() {
       }
     },
     onSuccess: () => {
+      // Invalidate all pain entry-related queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/trend"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/triggers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/patterns"] });
       
       // Also refetch user data to ensure we still have a valid session
       if (refetchUser) {
@@ -217,6 +219,13 @@ export default function PainForm() {
     
     logPainMutation.mutate(values, {
       onSuccess: () => {
+        // Invalidate all pain entry-related queries to ensure fresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/pain-entries"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/recent"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/trend"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/triggers"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/pain-entries/patterns"] });
+        
         toast({
           title: "Success",
           description: "Your pain entry has been saved",
