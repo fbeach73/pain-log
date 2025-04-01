@@ -283,40 +283,40 @@ export default function AuthPage() {
       </div>
       
       {/* Right side - information */}
-      <div className="w-full md:w-1/2 bg-gradient-to-br from-primary-600 to-secondary-500 p-12 hidden md:flex flex-col justify-center">
+      <div className="w-full md:w-1/2 bg-[#f8fafc] p-12 hidden md:flex flex-col justify-center">
         <div className="max-w-md mx-auto">
-          <h2 className="text-4xl font-bold mb-6 text-slate-900">Take Control of Your Pain Journey</h2>
+          <h2 className="text-3xl font-bold mb-6 text-[#1e293b]">Take Control of Your Pain Journey</h2>
           <div className="space-y-6">
             <div className="flex items-start">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <h3 className="font-semibold text-xl mb-1 text-slate-900">Track Your Pain</h3>
-                <p className="text-slate-800">Log and monitor your pain levels, locations, and triggers with standardized assessment tools.</p>
+                <h3 className="font-semibold text-xl mb-1 text-[#1e293b]">Track Your Pain</h3>
+                <p className="text-[#475569]">Log and monitor your pain levels, locations, and triggers with standardized assessment tools.</p>
               </div>
             </div>
             <div className="flex items-start">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               <div>
-                <h3 className="font-semibold text-xl mb-1">Discover Patterns</h3>
-                <p className="text-slate-800">Visualize your pain data to identify trends, triggers, and effective management strategies.</p>
+                <h3 className="font-semibold text-xl mb-1 text-[#1e293b]">Discover Patterns</h3>
+                <p className="text-[#475569]">Visualize your pain data to identify trends, triggers, and effective management strategies.</p>
               </div>
             </div>
             <div className="flex items-start">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
               <div>
-                <h3 className="font-semibold text-xl mb-1">Evidence-Based Resources</h3>
-                <p className="text-white/80">Access reliable information and management techniques based on the latest medical research.</p>
+                <h3 className="font-semibold text-xl mb-1 text-[#1e293b]">Evidence-Based Resources</h3>
+                <p className="text-[#475569]">Access reliable information and management techniques based on the latest medical research.</p>
               </div>
             </div>
           </div>
-          <div className="mt-8 p-4 bg-slate-800/10 rounded-lg">
-            <p className="italic text-slate-900">
+          <div className="mt-8 p-4 bg-[#e2e8f0] rounded-lg">
+            <p className="italic text-[#1e293b]">
               "PainClinics.com PainTracker helps you communicate your pain experience more effectively with healthcare providers, leading to better treatment outcomes."
             </p>
           </div>
