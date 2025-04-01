@@ -283,17 +283,17 @@ export default function AuthPage() {
       </div>
       
       {/* Right side - information */}
-      <div className="w-full md:w-1/2 bg-gradient-to-br from-primary-600 to-secondary-500 text-white p-12 hidden md:flex flex-col justify-center">
+      <div className="w-full md:w-1/2 bg-gradient-to-br from-primary-600 to-secondary-500 p-12 hidden md:flex flex-col justify-center">
         <div className="max-w-md mx-auto">
-          <h2 className="text-4xl font-bold mb-6">Take Control of Your Pain Journey</h2>
+          <h2 className="text-4xl font-bold mb-6 text-slate-900">Take Control of Your Pain Journey</h2>
           <div className="space-y-6">
             <div className="flex items-start">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <h3 className="font-semibold text-xl mb-1">Track Your Pain</h3>
-                <p className="text-white/80">Log and monitor your pain levels, locations, and triggers with standardized assessment tools.</p>
+                <h3 className="font-semibold text-xl mb-1 text-slate-900">Track Your Pain</h3>
+                <p className="text-slate-800">Log and monitor your pain levels, locations, and triggers with standardized assessment tools.</p>
               </div>
             </div>
             <div className="flex items-start">
@@ -302,7 +302,7 @@ export default function AuthPage() {
               </svg>
               <div>
                 <h3 className="font-semibold text-xl mb-1">Discover Patterns</h3>
-                <p className="text-white/80">Visualize your pain data to identify trends, triggers, and effective management strategies.</p>
+                <p className="text-slate-800">Visualize your pain data to identify trends, triggers, and effective management strategies.</p>
               </div>
             </div>
             <div className="flex items-start">
@@ -315,8 +315,8 @@ export default function AuthPage() {
               </div>
             </div>
           </div>
-          <div className="mt-8 p-4 bg-white/10 rounded-lg">
-            <p className="italic text-white/90">
+          <div className="mt-8 p-4 bg-slate-800/10 rounded-lg">
+            <p className="italic text-slate-900">
               "PainClinics.com PainTracker helps you communicate your pain experience more effectively with healthcare providers, leading to better treatment outcomes."
             </p>
           </div>
