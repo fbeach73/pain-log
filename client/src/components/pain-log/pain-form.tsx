@@ -54,9 +54,11 @@ const painFormSchema = insertPainEntrySchema.omit({ userId: true }).extend({
   time: z.string().min(1, "Time is required")
     .refine(
       (time, ctx) => {
+        // Check if ctx and ctx.path exist before proceeding
+        if (!ctx || !ctx.path) return true;
+        
         // Only validate time if date is today
-        const dateValue = ctx.path[0] === "time" ? 
-          (ctx.parent as any).date : undefined;
+        const dateValue = ctx.parent ? ctx.parent.date : undefined;
         
         if (!dateValue) return true; // Skip validation if no date is provided
         
