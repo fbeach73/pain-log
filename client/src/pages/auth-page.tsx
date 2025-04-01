@@ -31,7 +31,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function AuthPage() {
   const [, navigate] = useLocation();
   const { user, isLoading, loginMutation, registerMutation, refetchUser } = useAuth();
-  
+
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -80,7 +80,7 @@ export default function AuthPage() {
     // Only try to recover session if we have no user yet and we're not currently loading
     if (!user && !isLoading && refetchUser) {
       console.log("Auth page: Attempting to recover session...");
-      
+
       // Try to recover the session once on component mount
       refetchUser().then((result) => {
         if (result.data) {
@@ -104,7 +104,7 @@ export default function AuthPage() {
       const redirectTimer = setTimeout(() => {
         navigate("/");
       }, 100);
-      
+
       return () => clearTimeout(redirectTimer);
     }
   }, [user, navigate]);
@@ -127,7 +127,7 @@ export default function AuthPage() {
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <Card>
                 <CardHeader>
@@ -178,7 +178,7 @@ export default function AuthPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="register">
               <Card>
                 <CardHeader>
@@ -281,12 +281,12 @@ export default function AuthPage() {
           </Tabs>
         </div>
       </div>
-      
+
       {/* Right side - information */}
       <div className="w-full md:w-1/2 bg-[#f8fafc] p-12 hidden md:flex flex-col justify-center">
         <div className="max-w-md mx-auto">
           <h2 className="text-3xl font-bold mb-6 text-[#1e293b]">Take Control of Your Pain Journey</h2>
-          <div className="space-y-6">
+          <div className="flex flex-row justify-center gap-4"> {/* Changed to flex-row */}
             <div className="flex items-start">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-4 mt-0.5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
