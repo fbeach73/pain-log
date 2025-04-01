@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,53 @@ export default function AuthPage() {
     }
   }, [loginMutation.isSuccess, registerMutation.isSuccess, refetchUser, navigate]);
 
+  // Get toast hooks and Auth context
+  const { toast } = useToast();
+  const { storedUserInfo, attemptAutoLogin } = useAuth();
+
+  // Function to handle quick login with stored credentials
+  const handleQuickLogin = async () => {
+    if (storedUserInfo && storedUserInfo.username) {
+      toast({
+        title: "Welcome Back",
+        description: `Attempting to restore your session, ${storedUserInfo.firstName || storedUserInfo.username}...`,
+      });
+      
+      try {
+        // Try to use stored credentials to auto-login
+        if (attemptAutoLogin) {
+          const result = await attemptAutoLogin(storedUserInfo);
+          if (result) {
+            // Auto-login successful
+            toast({
+              title: "Success",
+              description: "Your session has been restored!",
+            });
+            return;
+          }
+        }
+        
+        // If auto-login fails or isn't available, at least preset the username
+        if (storedUserInfo.username) {
+          loginForm.setValue('username', storedUserInfo.username);
+          // Focus the password field for quicker login
+          setTimeout(() => {
+            const passwordField = document.querySelector('input[name="password"]');
+            if (passwordField) {
+              (passwordField as HTMLInputElement).focus();
+            }
+          }, 100);
+        }
+      } catch (error) {
+        console.error("Auto-login failed:", error);
+        toast({
+          title: "Session Restoration Failed",
+          description: "Please enter your password to login.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
 
   // Attempt to recover session on auth page load
@@ -169,6 +217,20 @@ export default function AuthPage() {
                         Sign In
                       </Button>
                       <div className="mt-4 pt-4 border-t text-center">
+                        {storedUserInfo && storedUserInfo.username && (
+                          <div className="mb-4">
+                            <Button 
+                              variant="outline" 
+                              className="w-full text-sm" 
+                              onClick={handleQuickLogin}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                              </svg>
+                              Continue as {storedUserInfo.firstName || storedUserInfo.username}
+                            </Button>
+                          </div>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           Don't have an account? Use the Register tab to create one.
                         </p>

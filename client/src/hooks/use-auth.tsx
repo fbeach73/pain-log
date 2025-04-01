@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -16,6 +16,8 @@ type AuthContextType = {
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
   refetchUser?: () => Promise<any>;
+  storedUserInfo: Partial<SelectUser> | null;
+  attemptAutoLogin: (storedInfo: Partial<SelectUser>) => Promise<SelectUser | null>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -23,6 +25,36 @@ type LoginData = Pick<InsertUser, "username" | "password">;
 export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  
+  // Save last successful user info in localStorage
+  const saveUserInfo = (user: SelectUser) => {
+    try {
+      // Only store non-sensitive information
+      const userInfo = {
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      };
+      localStorage.setItem('painTracker_userInfo', JSON.stringify(userInfo));
+    } catch (e) {
+      console.error('Error saving user info to localStorage:', e);
+    }
+  };
+  
+  // Get stored user info
+  const getStoredUserInfo = (): Partial<SelectUser> | null => {
+    try {
+      const storedData = localStorage.getItem('painTracker_userInfo');
+      return storedData ? JSON.parse(storedData) : null;
+    } catch (e) {
+      console.error('Error retrieving user info from localStorage:', e);
+      return null;
+    }
+  };
+  
+  // User data query
   const {
     data: user,
     error,
@@ -36,6 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: 2, // More retries for user data
     refetchOnReconnect: true
   });
+  
+  // If user data changes and is valid, save it
+  useEffect(() => {
+    if (user) {
+      saveUserInfo(user);
+    }
+  }, [user]);
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -44,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      saveUserInfo(user);
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.firstName || user.username}!`,
@@ -87,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Logout successful, redirecting to /auth");
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      localStorage.removeItem('painTracker_userInfo'); // Clear stored user info
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
@@ -105,11 +146,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       // Even if server logout fails, clear local user data and redirect
       queryClient.setQueryData(["/api/user"], null);
+      localStorage.removeItem('painTracker_userInfo'); // Clear stored user info
       setTimeout(() => {
         window.location.href = "/auth";
       }, 1000);
     },
   });
+  
+  // Auto-login attempt using stored credentials on app reload or session loss
+  const attemptAutoLogin = async (storedInfo: Partial<SelectUser>) => {
+    if (!storedInfo || !storedInfo.username) return null;
+    
+    try {
+      // First try to see if current session is still valid by refetching
+      const result = await refetchUser?.();
+      if (result?.data) {
+        // Server session is still valid, no need for manual auto-login
+        console.log("Session active, no auto-login needed");
+        return result.data;
+      }
+      
+      // Session lost but we have stored user info, show a message
+      toast({
+        title: "Session Expired",
+        description: "You'll need to log in again to continue.",
+        variant: "default",
+      });
+      
+      return null;
+    } catch (error) {
+      console.error("Auto-login attempt failed:", error);
+      return null;
+    }
+  };
+  
+  // Effect to attempt auto-login when session is lost but we have stored user info
+  useEffect(() => {
+    // Only attempt if we're not currently loading, have no user, and auth isn't currently in progress
+    if (!isLoading && !user && !loginMutation.isPending && !registerMutation.isPending) {
+      const storedInfo = getStoredUserInfo();
+      if (storedInfo && storedInfo.username) {
+        console.log("Attempting session recovery for:", storedInfo.username);
+        attemptAutoLogin(storedInfo);
+      }
+    }
+  }, [isLoading, user]);
 
   return (
     <AuthContext.Provider
@@ -121,6 +202,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logoutMutation,
         registerMutation,
         refetchUser,
+        storedUserInfo: getStoredUserInfo(),
+        attemptAutoLogin, // Expose this to allow components to trigger it explicitly
       }}
     >
       {children}
