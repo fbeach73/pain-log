@@ -53,37 +53,13 @@ const painFormSchema = insertPainEntrySchema.omit({ userId: true }).extend({
     ),
   time: z.string().min(1, "Time is required")
     .refine(
-      (time, ctx) => {
-        // Check if ctx and ctx.path exist before proceeding
-        if (!ctx || !ctx.path) return true;
-        
-        // Only validate time if date is today
-        const dateValue = ctx.parent ? ctx.parent.date : undefined;
-        
-        if (!dateValue) return true; // Skip validation if no date is provided
-        
-        const selectedDate = new Date(dateValue);
-        const today = new Date();
-        
-        if (selectedDate.getDate() === today.getDate() &&
-            selectedDate.getMonth() === today.getMonth() &&
-            selectedDate.getFullYear() === today.getFullYear()) {
-          
-          // Parse time strings
-          const [hours, minutes] = time.split(':').map(Number);
-          const now = new Date();
-          
-          // Create date objects for comparison
-          const selectedDateTime = new Date();
-          selectedDateTime.setHours(hours, minutes, 0, 0);
-          
-          return selectedDateTime <= now;
-        }
-        
-        return true; // Skip validation for past dates
+      (time) => {
+        // Simple validation that ensures format
+        const pattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        return pattern.test(time);
       },
       {
-        message: "Time cannot be in the future for today's entries",
+        message: "Please enter a valid time in 24-hour format (HH:MM)",
       }
     ),
   intensity: z.number().min(0).max(10),

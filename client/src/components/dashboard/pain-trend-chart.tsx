@@ -15,6 +15,8 @@ export default function PainTrendChart() {
   
   const { data: painData, isLoading } = useQuery<PainTrendData[]>({
     queryKey: ["/api/pain-entries/trend", period],
+    staleTime: 0, // Always fetch fresh data
+    retry: 3, // Retry failed requests
   });
   
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
